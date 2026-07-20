@@ -7,6 +7,9 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card } from "@/components/ui/card";
 import { JobCard } from "@/components/JobCard";
+import { StockRequisitionDialog } from "@/components/StockRequisitionDialog";
+import { DualSignatureDialog } from "@/components/DualSignatureDialog";
+import { RecheckTrackingDialog } from "@/components/RecheckTrackingDialog";
 import { requestStore, useRequests } from "@/lib/requestStore";
 import {
   CATEGORY_LABEL,
@@ -83,6 +86,15 @@ export default function TechnicianBoard() {
   const [timeSort, setTimeSort] = useState<"reported-desc" | "reported-asc">("reported-desc");
   const [view, setView] = useState<"kanban" | "list">("kanban");
   const [draggedId, setDraggedId] = useState<string | null>(null);
+
+  // Dialog States for Requirement Features
+  const [stockReqId, setStockReqId] = useState<string | null>(null);
+  const [dualSigReqId, setDualSigReqId] = useState<string | null>(null);
+  const [recheckReqId, setRecheckReqId] = useState<string | null>(null);
+
+  const stockRequest = useMemo(() => requests.find((r) => r.request_id === stockReqId), [requests, stockReqId]);
+  const dualSigRequest = useMemo(() => requests.find((r) => r.request_id === dualSigReqId), [requests, dualSigReqId]);
+  const recheckRequest = useMemo(() => requests.find((r) => r.request_id === recheckReqId), [requests, recheckReqId]);
 
   const filtered = useMemo(() => {
     return requests
@@ -360,6 +372,9 @@ export default function TechnicianBoard() {
                             onOpen={(id) => navigate(`/assessment/${id}`)}
                             onAccept={handleAccept}
                             onChangeStatus={handleChangeStatus}
+                            onOpenStockRequisition={(id) => setStockReqId(id)}
+                            onOpenDualSignature={(id) => setDualSigReqId(id)}
+                            onOpenRecheck={(id) => setRecheckReqId(id)}
                             showAccept={column.key === "open"}
                             showQuickActions={column.key !== "open" && column.key !== "complete"}
                             draggable
@@ -383,12 +398,40 @@ export default function TechnicianBoard() {
                 onOpen={(id) => navigate(`/assessment/${id}`)}
                 onAccept={handleAccept}
                 onChangeStatus={handleChangeStatus}
+                onOpenStockRequisition={(id) => setStockReqId(id)}
+                onOpenDualSignature={(id) => setDualSigReqId(id)}
+                onOpenRecheck={(id) => setRecheckReqId(id)}
                 draggable
                 onDragStart={() => handleDragStart(request.request_id)}
                 onDragEnd={handleDragEnd}
               />
             ))}
           </div>
+        )}
+
+        {/* Dialog Renderings */}
+        {stockRequest && (
+          <StockRequisitionDialog
+            request={stockRequest}
+            open={!!stockReqId}
+            onOpenChange={(open) => !open && setStockReqId(null)}
+          />
+        )}
+
+        {dualSigRequest && (
+          <DualSignatureDialog
+            request={dualSigRequest}
+            open={!!dualSigReqId}
+            onOpenChange={(open) => !open && setDualSigReqId(null)}
+          />
+        )}
+
+        {recheckRequest && (
+          <RecheckTrackingDialog
+            request={recheckRequest}
+            open={!!recheckReqId}
+            onOpenChange={(open) => !open && setRecheckReqId(null)}
+          />
         )}
       </div>
     </div>

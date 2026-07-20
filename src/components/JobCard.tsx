@@ -1,10 +1,10 @@
+import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { PriorityBadge } from "./PriorityBadge";
 import { StatusBadge } from "./StatusBadge";
 import { CATEGORY_LABEL, Status, timeAgo, WorkRequest, getTechnicianName, getTechnicianDepartment } from "@/lib/mockData";
-import { Clock, MapPin, User, Zap, Wrench, Building2, Droplets, Cpu, Paperclip, Gauge, Waves, CircleHelp } from "lucide-react";
-import { useState } from "react";
+import { Clock, MapPin, User, Zap, Wrench, Building2, Droplets, Cpu, Paperclip, Gauge, Waves, CircleHelp, ShoppingCart, FileCheck2, CalendarCheck2 } from "lucide-react";
 
 const CATEGORY_ICON = {
   "electrical-control": Zap,
@@ -23,6 +23,9 @@ interface Props {
   onAccept?: (id: string) => void;
   onOpen?: (id: string) => void;
   onChangeStatus?: (id: string, status: Status, actionLabel: string) => void;
+  onOpenStockRequisition?: (id: string) => void;
+  onOpenDualSignature?: (id: string) => void;
+  onOpenRecheck?: (id: string) => void;
   showAccept?: boolean;
   showQuickActions?: boolean;
   draggable?: boolean;
@@ -35,6 +38,9 @@ export function JobCard({
   onAccept,
   onOpen,
   onChangeStatus,
+  onOpenStockRequisition,
+  onOpenDualSignature,
+  onOpenRecheck,
   showAccept = true,
   showQuickActions = true,
   draggable = false,
@@ -228,8 +234,57 @@ export function JobCard({
           )}
         </div>
 
+        {/* Requirement Feature Badges & Quick Action Triggers */}
+        {isExpanded && (
+          <div className="space-y-1.5 pt-2 border-t border-dashed">
+            <div className="flex flex-wrap gap-1">
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className="h-7 text-[10px] px-2 gap-1 bg-amber-500/10 border-amber-500/30 text-amber-700 hover:bg-amber-500/20"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onOpenStockRequisition?.(request.request_id);
+                }}
+              >
+                <ShoppingCart className="h-3 w-3" />
+                เบิกอะไหล่ {request.stock_requisition?.parts_ready ? "✅ (อะไหล่พร้อมแล้ว)" : request.stock_requisition?.requisitions?.length ? `(${request.stock_requisition.requisitions.length} รายการ)` : ""}
+              </Button>
+
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className="h-7 text-[10px] px-2 gap-1 bg-violet-500/10 border-violet-500/30 text-violet-700 hover:bg-violet-500/20"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onOpenDualSignature?.(request.request_id);
+                }}
+              >
+                <FileCheck2 className="h-3 w-3" />
+                อนุมัติ 2 คน {request.dual_approval?.status === "approved" ? "✅ (อนุมัติแล้ว)" : request.dual_approval?.status === "partial" ? "(อนุมัติ 1/2)" : "(0/2)"}
+              </Button>
+
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className="h-7 text-[10px] px-2 gap-1 bg-emerald-500/10 border-emerald-500/30 text-emerald-700 hover:bg-emerald-500/20"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onOpenRecheck?.(request.request_id);
+                }}
+              >
+                <CalendarCheck2 className="h-3 w-3" />
+                ตรวจซ้ำ 2 อาทิตย์ {request.recheck_data?.round1?.status === "completed" ? "✅" : ""}
+              </Button>
+            </div>
+          </div>
+        )}
+
         {showQuickActions && request.status !== "open" && request.status !== "complete" && isExpanded && (
-          <div className="grid grid-cols-3 gap-1">
+          <div className="grid grid-cols-3 gap-1 pt-1">
             <Button
               size="sm"
               variant="outline"
@@ -258,10 +313,10 @@ export function JobCard({
               className="h-8 px-2 text-[11px]"
               onClick={(e) => {
                 e.stopPropagation();
-                onChangeStatus?.(request.request_id, "done", "ปิดงาน");
+                onOpenDualSignature?.(request.request_id);
               }}
             >
-              ปิดงาน
+              อนุมัติปิดงาน
             </Button>
           </div>
         )}

@@ -76,6 +76,68 @@ export interface RequestNotification {
   read: boolean;
 }
 
+export interface RequisitionItem {
+  requisition_id: string;
+  part_id: string;
+  part_name: string;
+  quantity: number;
+  unit: string;
+  unit_price: number;
+  total_price: number;
+  requested_at: string;
+  status: "requested" | "ready" | "issued";
+}
+
+export interface StockAuditLog {
+  log_id: string;
+  timestamp: string;
+  actor: string;
+  action: string;
+  details: string;
+  price?: number;
+}
+
+export interface StockRequisitionData {
+  is_system_connected: boolean;
+  parts_ready: boolean;
+  total_price: number;
+  requisitions: RequisitionItem[];
+  logs: StockAuditLog[];
+}
+
+export interface SignatureEntry {
+  signer_name: string;
+  signer_role: string;
+  signer_department: string;
+  signed_at: string;
+  signature_data_url?: string;
+  note?: string;
+}
+
+export interface DualApprovalData {
+  approver1?: SignatureEntry;
+  approver2?: SignatureEntry;
+  status: "pending" | "partial" | "approved";
+  approved_at?: string;
+}
+
+export interface RecheckRound {
+  round: 1 | 2;
+  scheduled_date: string;
+  status: "pending" | "completed" | "issue_found";
+  inspector_name?: string;
+  inspector_department?: string;
+  checked_at?: string;
+  result_summary?: string;
+  requires_new_ticket?: boolean;
+}
+
+export interface RecheckData {
+  completed_at: string;
+  round1: RecheckRound;
+  round2: RecheckRound;
+}
+
 export interface StatusTimelineEvent {
   event_id: string;
   status: Status;
@@ -90,6 +152,7 @@ export interface SparePart {
   name: string;
   stock: number;
   unit: string;
+  unit_price?: number;
 }
 
 export interface WorkRequest {
@@ -111,6 +174,9 @@ export interface WorkRequest {
   assessment_report?: AssessmentReport;
   status_timeline: StatusTimelineEvent[];
   requester_notifications: RequestNotification[];
+  stock_requisition?: StockRequisitionData;
+  dual_approval?: DualApprovalData;
+  recheck_data?: RecheckData;
 }
 
 export const MOCK_REQUESTS: WorkRequest[] = [
@@ -280,11 +346,11 @@ export const MOCK_REQUESTS_WITH_TIMELINE: WorkRequest[] = MOCK_REQUESTS.map((req
 });
 
 export const MOCK_SPARE_PARTS: SparePart[] = [
-  { part_id: "SP-HYD-004", name: "ซีลยางกันน้ำมัน 50mm", stock: 24, unit: "ชิ้น" },
-  { part_id: "SP-ELC-112", name: "เบรกเกอร์ 3P 100A", stock: 6, unit: "ตัว" },
-  { part_id: "SP-BRG-201", name: "ตลับลูกปืน 6204ZZ", stock: 18, unit: "ลูก" },
-  { part_id: "SP-FIL-088", name: "ไส้กรองอากาศแอร์", stock: 12, unit: "ชุด" },
-  { part_id: "SP-BLT-045", name: "สายพาน V-Belt A-42", stock: 9, unit: "เส้น" },
+  { part_id: "SP-HYD-004", name: "ซีลยางกันน้ำมัน 50mm", stock: 24, unit: "ชิ้น", unit_price: 350 },
+  { part_id: "SP-ELC-112", name: "เบรกเกอร์ 3P 100A", stock: 6, unit: "ตัว", unit_price: 2450 },
+  { part_id: "SP-BRG-201", name: "ตลับลูกปืน 6204ZZ", stock: 18, unit: "ลูก", unit_price: 680 },
+  { part_id: "SP-FIL-088", name: "ไส้กรองอากาศแอร์", stock: 12, unit: "ชุด", unit_price: 1200 },
+  { part_id: "SP-BLT-045", name: "สายพาน V-Belt A-42", stock: 9, unit: "เส้น", unit_price: 450 },
 ];
 
 export const PRIORITY_LABEL: Record<Priority, string> = {
