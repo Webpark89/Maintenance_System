@@ -7,7 +7,8 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { DualApprovalData, SignatureEntry, WorkRequest } from "@/lib/mockData";
 import { requestStore } from "@/lib/requestStore";
-import { FileCheck2, PenTool, CheckCircle, ShieldCheck, UserCheck, RefreshCw, Sparkles } from "lucide-react";
+import { calculateRepairDuration } from "@/lib/holidayUtils";
+import { FileCheck2, PenTool, CheckCircle, ShieldCheck, UserCheck, RefreshCw, Sparkles, CalendarDays, Clock3 } from "lucide-react";
 import { toast } from "sonner";
 
 interface Props {
@@ -158,6 +159,46 @@ export function DualSignatureDialog({ request, open, onOpenChange }: Props) {
             </Badge>
           </div>
         </DialogHeader>
+
+        {/* Working Days & Repair Performance Comparison Banner */}
+        {(() => {
+          const report = request.assessment_report;
+          const startDate = report?.repair_date_range?.start || request.reported_time.slice(0, 10);
+          const endDate = report?.repair_date_range?.end || new Date().toISOString().slice(0, 10);
+          const duration = calculateRepairDuration(startDate, endDate);
+
+          return (
+            <div className="p-3 bg-gradient-to-r from-sky-50 to-indigo-50 dark:from-sky-950/40 dark:to-indigo-950/40 border border-sky-200 dark:border-sky-800 rounded-lg space-y-1.5 text-xs">
+              <div className="flex items-center justify-between font-bold text-sky-900 dark:text-sky-200">
+                <span className="flex items-center gap-1.5">
+                  <Clock3 className="h-4 w-4 text-sky-600" />
+                  สรุปเวลาการซ่อมบำรุงจริง (Working Days Comparison)
+                </span>
+                <Badge variant="outline" className="bg-white dark:bg-slate-900 text-sky-700 dark:text-sky-300 font-medium">
+                  {duration.workingDays} วันทำงานจริง ({duration.totalCalendarDays} วันตามปฏิทิน)
+                </Badge>
+              </div>
+              <div className="grid grid-cols-3 gap-2 pt-1 border-t border-sky-200/60 text-[11px]">
+                <div>
+                  <span className="text-muted-foreground block">ช่วงเวลาดำเนินการ:</span>
+                  <span className="font-medium">{startDate} ถึง {endDate}</span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground block">วันหยุดคาบเกี่ยว:</span>
+                  <span className="font-medium text-amber-700 dark:text-amber-300">
+                    {duration.weekendDaysCount + duration.holidaysCount} วัน (หักวันหยุดแล้ว)
+                  </span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground block">การประเมินระยะเวลา:</span>
+                  <span className="font-semibold text-emerald-600 dark:text-emerald-400">
+                    {duration.workingDays <= 3 ? "ตรงตามกรอบประเมิน" : "งานซ่อมขนาดยาว (มีวันหยุด)"}
+                  </span>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
 
         {/* Status Tracker Banner */}
         <div className="grid grid-cols-2 gap-3 p-3 bg-muted/40 rounded-lg border">

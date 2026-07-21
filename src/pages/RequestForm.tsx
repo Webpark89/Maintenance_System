@@ -29,7 +29,6 @@ import {
   History,
   LogOut,
   PencilLine,
-  MapPin,
   Paperclip,
   ShieldAlert,
   SlidersHorizontal,

@@ -275,15 +275,34 @@ export const requestStore = {
           ]
         : req.requester_notifications;
 
+      const shouldMoveToDoing = ready && (req.status === "waiting" || req.status === "assess");
+      const nextStatus = shouldMoveToDoing ? ("doing" as const) : req.status;
+      const nextSubStatus = shouldMoveToDoing ? ("in-progress" as const) : req.sub_status;
+
+      const nextTimeline = shouldMoveToDoing
+        ? [
+            ...req.status_timeline,
+            {
+              event_id: randomId("evt"),
+              status: "doing" as const,
+              updated_by: actorName,
+              updated_by_role: "technician" as const,
+              updated_at: now,
+              note: "อะไหล่พร้อมแล้ว — ย้ายสถานะเป็นกำลังซ่อมบำรุง",
+            },
+          ]
+        : req.status_timeline;
+
       return {
         ...req,
+        status: nextStatus,
+        sub_status: nextSubStatus,
+        status_timeline: nextTimeline,
         stock_requisition: {
           ...currentStock,
           parts_ready: ready,
           logs: [newLog, ...currentStock.logs],
         },
-        // If parts are ready and current status is waiting, update substatus
-        ...(ready && req.status === "waiting" ? { sub_status: "in-progress" as const } : {}),
         requester_notifications: updatedNotifications,
       };
     });

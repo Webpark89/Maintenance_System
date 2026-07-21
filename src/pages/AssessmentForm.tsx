@@ -11,6 +11,8 @@ import {
   timeAgo,
 } from "@/lib/mockData";
 import { requestStore, useRequest, useRequests } from "@/lib/requestStore";
+import { StockRequisitionDialog } from "@/components/StockRequisitionDialog";
+import { DualSignatureDialog } from "@/components/DualSignatureDialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -31,15 +33,18 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { calculateRepairDuration } from "@/lib/holidayUtils";
 import {
   ArrowLeft,
   Calendar,
+  CalendarDays,
   ClipboardCheck,
   Clock,
   Camera,
   FileText,
   History,
   Image,
+  Info,
   Paperclip,
   Package,
   Plus,
@@ -144,11 +149,13 @@ const AssessmentForm = () => {
   const [temporaryMeasure, setTemporaryMeasure] = useState("");
   const [communicationLog, setCommunicationLog] = useState("");
   const [internalNote, setInternalNote] = useState("");
-  const [parts, setParts] = useState<PartLine[]>([]);
-  const [cost, setCost] = useState<number>(0);
+  const stockPrice = request.stock_requisition?.total_price ?? 0;
+  const [cost, setCost] = useState<number>(stockPrice);
   const [manHour, setManHour] = useState<number>(2);
   const [status, setStatus] = useState<Status>("doing");
   const [assessmentPhotos, setAssessmentPhotos] = useState<RequestAttachment[]>([]);
+  const [isStockOpen, setIsStockOpen] = useState(false);
+  const [isDualSigOpen, setIsDualSigOpen] = useState(false);
 
   const timeline = useMemo(
     () => [...request.status_timeline].sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()),
@@ -399,8 +406,8 @@ const AssessmentForm = () => {
                   setTemporaryMeasure={setTemporaryMeasure}
                 />
               </SectionAccordion>
-              <SectionAccordion value="parts" icon={<Package className="h-4 w-4" />} title="เบิกอะไหล่">
-                <PartsFields parts={parts} addPart={addPart} updateQty={updateQty} removePart={removePart} />
+              <SectionAccordion value="parts" icon={<Package className="h-4 w-4" />} title="เบิกอะไหล่ & คลังสินค้า">
+                <PartsFields request={request} onOpenStockDialog={() => setIsStockOpen(true)} />
               </SectionAccordion>
               <SectionAccordion value="status" icon={<Save className="h-4 w-4" />} title="ต้นทุน / การสื่อสาร / หมายเหตุ">
                 <CommunicationFields
@@ -457,8 +464,8 @@ const AssessmentForm = () => {
                 setTemporaryMeasure={setTemporaryMeasure}
               />
             </SectionCard>
-            <SectionCard icon={<Package className="h-5 w-5" />} title="เบิกอะไหล่">
-              <PartsFields parts={parts} addPart={addPart} updateQty={updateQty} removePart={removePart} />
+            <SectionCard icon={<Package className="h-5 w-5" />} title="เบิกอะไหล่ & คลังสินค้า (Stock Requisition)">
+              <PartsFields request={request} onOpenStockDialog={() => setIsStockOpen(true)} />
             </SectionCard>
             <SectionCard icon={<Save className="h-5 w-5" />} title="ต้นทุน / การสื่อสาร / หมายเหตุ">
               <CommunicationFields
@@ -498,8 +505,8 @@ const AssessmentForm = () => {
           <Button variant="outline" className="hidden md:inline-flex" onClick={() => applyStatusAction("waiting", "รออะไหล่")}>
             รออะไหล่
           </Button>
-          <Button variant="outline" className="hidden md:inline-flex" onClick={() => applyStatusAction("done", "ปิดงาน")}>
-            ปิดงาน
+          <Button variant="industrial" className="hidden md:inline-flex gap-1" onClick={() => setIsDualSigOpen(true)}>
+            อนุมัติปิดงาน (Sign 2 คน)
           </Button>
           <Button variant="outline" onClick={() => navigate("/board")} className="flex-1 sm:flex-initial">
             ยกเลิก
@@ -509,6 +516,18 @@ const AssessmentForm = () => {
           </Button>
         </div>
       </div>
+
+      <StockRequisitionDialog
+        request={request}
+        open={isStockOpen}
+        onOpenChange={setIsStockOpen}
+      />
+
+      <DualSignatureDialog
+        request={request}
+        open={isDualSigOpen}
+        onOpenChange={setIsDualSigOpen}
+      />
     </div>
   );
 };
@@ -706,11 +725,11 @@ function OnSiteAssessmentFields({
             <Button type="button" variant={machineState === "limited-condition" ? "default" : "outline"} onClick={() => setMachineState("limited-condition")}>ใช้งานแบบจำกัดเงื่อนไข</Button>
           </div>
         </div>
-        <div className="space-y-1.5">
-          <Label className="text-xs">จำนวนวันซ่อม</Label>
+        <div className="space-y-2">
+          <Label className="text-xs font-semibold">จำนวนวันซ่อม (คำนวณวันทำงานจริงหักวันหยุด)</Label>
           <div className="grid grid-cols-2 gap-2">
             <div>
-              <Label className="text-[11px] text-muted-foreground">เริ่ม</Label>
+              <Label className="text-[11px] text-muted-foreground">เริ่มต้น</Label>
               <Input type="date" value={repairStartDate} onChange={(e) => setRepairStartDate(e.target.value)} />
             </div>
             <div>
@@ -718,6 +737,33 @@ function OnSiteAssessmentFields({
               <Input type="date" value={repairEndDate} onChange={(e) => setRepairEndDate(e.target.value)} />
             </div>
           </div>
+
+          {(() => {
+            const duration = calculateRepairDuration(repairStartDate, repairEndDate);
+            return (
+              <div className="p-2.5 rounded-md bg-sky-50 dark:bg-sky-950/40 border border-sky-200 dark:border-sky-800 text-xs space-y-1 mt-2">
+                <div className="flex items-center justify-between font-semibold text-sky-900 dark:text-sky-200">
+                  <span className="flex items-center gap-1">
+                    <CalendarDays className="h-3.5 w-3.5 text-sky-600" />
+                    สรุปเวลาซ่อมบำรุงจริง (Working Days Logic):
+                  </span>
+                  <span className="bg-sky-600 text-white px-2 py-0.5 rounded text-[11px]">
+                    {duration.workingDays} วันทำงาน
+                  </span>
+                </div>
+                <div className="text-[11px] text-sky-700 dark:text-sky-300 flex items-center justify-between">
+                  <span>วันตามปฏิทินทั้งหมด: {duration.totalCalendarDays} วัน</span>
+                  <span>ติดเสาร์-อาทิตย์/วันหยุด: {duration.weekendDaysCount + duration.holidaysCount} วัน</span>
+                </div>
+                {duration.holidayNames.length > 0 && (
+                  <div className="text-[10px] text-amber-700 dark:text-amber-300 flex items-center gap-1 border-t border-sky-200/60 pt-1">
+                    <Info className="h-3 w-3 shrink-0" />
+                    <span>วันหยุดบริษัทที่คาบเกี่ยว: {duration.holidayNames.join(", ")}</span>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
         </div>
       </div>
 
@@ -903,74 +949,74 @@ function SectionAccordion({
 }
 
 function PartsFields({
-  parts,
-  addPart,
-  updateQty,
-  removePart,
+  request,
+  onOpenStockDialog,
 }: {
-  parts: PartLine[];
-  addPart: (id: string) => void;
-  updateQty: (id: string, qty: number) => void;
-  removePart: (id: string) => void;
+  request: import("@/lib/mockData").WorkRequest;
+  onOpenStockDialog: () => void;
 }) {
+  const stock = request.stock_requisition ?? {
+    is_system_connected: false,
+    parts_ready: false,
+    total_price: 0,
+    requisitions: [],
+    logs: [],
+  };
+
   return (
-    <>
-      <div className="flex gap-2">
-        <Select onValueChange={addPart}>
-          <SelectTrigger className="flex-1">
-            <SelectValue placeholder="ค้นหาและเพิ่มอะไหล่..." />
-          </SelectTrigger>
-          <SelectContent>
-            {MOCK_SPARE_PARTS.map((p) => (
-              <SelectItem key={p.part_id} value={p.part_id}>
-                <div className="flex items-center justify-between gap-3 w-full">
-                  <span>{p.name}</span>
-                  <span className="text-xs text-muted-foreground font-mono">
-                    คงเหลือ {p.stock} {p.unit}
-                  </span>
-                </div>
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Button variant="amber" type="button" onClick={() => toast.info("เปิดกล้องเพื่อสแกนบาร์โค้ด (เดโม)")}>
-          <ScanBarcode className="h-4 w-4 mr-1" />
-          สแกน
+    <div className="space-y-3">
+      {/* Header status bar */}
+      <div className="flex items-center justify-between p-3 rounded-lg border bg-muted/30">
+        <div className="space-y-0.5">
+          <div className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+            <span>สถานะอะไหล่:</span>
+            <span className={stock.parts_ready ? "text-emerald-600 font-bold" : "text-amber-600 font-bold"}>
+              {stock.parts_ready ? "✅ อะไหล่พร้อมแล้ว" : "⏳ รออะไหล่"}
+            </span>
+          </div>
+          <div className="text-[11px] text-muted-foreground">
+            ราคารวมทั้งสิ้น: <span className="font-bold text-primary font-mono">฿{stock.total_price.toLocaleString()}</span> ({stock.requisitions.length} รายการ)
+          </div>
+        </div>
+        <Button size="sm" variant="industrial" className="h-8 text-xs gap-1.5" onClick={onOpenStockDialog}>
+          <Package className="h-3.5 w-3.5" />
+          ระบบเบิกอะไหล่ & คลังสินค้า
         </Button>
       </div>
 
-      {parts.length === 0 ? (
+      {stock.requisitions.length === 0 ? (
         <div className="text-center py-6 border-2 border-dashed border-border rounded-lg text-muted-foreground text-sm">
           <Package className="h-8 w-8 mx-auto mb-2 opacity-30" />
-          ยังไม่มีรายการอะไหล่
+          ยังไม่มีรายการเบิกอะไหล่ในใบแจ้งซ่อมนี้
+          <div className="mt-2">
+            <Button variant="outline" size="sm" type="button" className="text-xs" onClick={onOpenStockDialog}>
+              + เพิ่มรายการเบิกอะไหล่ใหม่
+            </Button>
+          </div>
         </div>
       ) : (
-        <ul className="space-y-2">
-          {parts.map((p) => (
-            <li key={p.part_id} className="flex items-center gap-2 p-3 rounded-md border border-border bg-muted/30">
-              <div className="flex-1 min-w-0">
-                <div className="font-medium text-sm truncate">{p.name}</div>
-                <div className="text-xs text-muted-foreground font-mono">{p.part_id}</div>
-              </div>
-              <Input
-                type="number"
-                min={1}
-                value={p.quantity}
-                onChange={(e) => updateQty(p.part_id, Math.max(1, +e.target.value))}
-                className="w-20 h-9"
-              />
-              <Button variant="ghost" size="icon" onClick={() => removePart(p.part_id)}>
-                <Trash2 className="h-4 w-4 text-destructive" />
-              </Button>
-            </li>
-          ))}
-        </ul>
+        <div className="space-y-2">
+          <ul className="divide-y border rounded-lg overflow-hidden bg-card text-xs">
+            {stock.requisitions.map((req) => (
+              <li key={req.requisition_id} className="p-2.5 flex items-center justify-between hover:bg-muted/30">
+                <div>
+                  <div className="font-semibold text-foreground">{req.part_name}</div>
+                  <div className="text-[10px] text-muted-foreground font-mono">
+                    {req.quantity} {req.unit} @฿{req.unit_price}
+                  </div>
+                </div>
+                <div className="font-bold text-primary font-mono">
+                  ฿{req.total_price.toLocaleString()}
+                </div>
+              </li>
+            ))}
+          </ul>
+          <Button variant="outline" size="sm" type="button" className="w-full text-xs" onClick={onOpenStockDialog}>
+            เปิดจัดการรายการเบิกทั้งหมด & เช็กอะไหล่พร้อม
+          </Button>
+        </div>
       )}
-
-      <Button variant="outline" size="sm" type="button" className="w-full" onClick={() => toast.info("เลือกอะไหล่จาก dropdown ด้านบน")}>
-        <Plus className="h-4 w-4 mr-1" /> เพิ่มอะไหล่
-      </Button>
-    </>
+    </div>
   );
 }
 

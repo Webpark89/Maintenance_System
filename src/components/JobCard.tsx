@@ -4,7 +4,8 @@ import { Button } from "@/components/ui/button";
 import { PriorityBadge } from "./PriorityBadge";
 import { StatusBadge } from "./StatusBadge";
 import { CATEGORY_LABEL, Status, timeAgo, WorkRequest, getTechnicianName, getTechnicianDepartment } from "@/lib/mockData";
-import { Clock, MapPin, User, Zap, Wrench, Building2, Droplets, Cpu, Paperclip, Gauge, Waves, CircleHelp, ShoppingCart, FileCheck2, CalendarCheck2 } from "lucide-react";
+import { Clock, MapPin, User, Zap, Wrench, Building2, Droplets, Cpu, Paperclip, Gauge, Waves, CircleHelp, ShoppingCart, FileCheck2, CalendarCheck2, ChevronDown, ChevronUp, Eye } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 const CATEGORY_ICON = {
   "electrical-control": Zap,
@@ -59,32 +60,32 @@ export function JobCard({
     details?.issue_symptom === "not-working"
       ? "ไม่ทำงาน"
       : details?.issue_symptom === "noise"
-      ? "เสียงดัง"
-      : details?.issue_symptom === "vibration"
-      ? "สั่น"
-      : details?.issue_symptom === "error"
-      ? "แจ้ง Error"
-      : details?.issue_symptom === "other"
-      ? "อื่น ๆ"
-      : "-";
+        ? "เสียงดัง"
+        : details?.issue_symptom === "vibration"
+          ? "สั่น"
+          : details?.issue_symptom === "error"
+            ? "แจ้ง Error"
+            : details?.issue_symptom === "other"
+              ? "อื่น ๆ"
+              : "-";
 
   const frequencyLabel =
     details?.issue_frequency === "first-time"
       ? "ครั้งแรก"
       : details?.issue_frequency === "repeated"
-      ? "เกิดซ้ำ"
-      : details?.issue_frequency === "always"
-      ? "เกิดตลอด"
-      : "-";
+        ? "เกิดซ้ำ"
+        : details?.issue_frequency === "always"
+          ? "เกิดตลอด"
+          : "-";
 
   const operabilityLabel =
     details?.machine_operability === "running"
       ? "ยังใช้งานได้"
       : details?.machine_operability === "degraded"
-      ? "เริ่มเสื่อมสภาพ"
-      : details?.machine_operability === "stopped"
-      ? "หยุดทำงาน"
-      : "-";
+        ? "เริ่มเสื่อมสภาพ"
+        : details?.machine_operability === "stopped"
+          ? "หยุดทำงาน"
+          : "-";
 
   const machineCode = details?.asset_id || request.asset_name || "-";
   const machineNumber = details?.machine_number || "-";
@@ -99,15 +100,14 @@ export function JobCard({
       draggable={draggable}
       onDragStart={onDragStart}
       onDragEnd={onDragEnd}
-      className={`group relative overflow-hidden bg-gradient-card shadow-card hover:shadow-elevated transition-all duration-300 cursor-pointer animate-slide-up border-l-4 ${
-        isCritical
-          ? "border-l-priority-critical"
-          : request.priority === "high"
+      className={`group relative overflow-hidden bg-gradient-card shadow-card hover:shadow-elevated transition-all duration-300 cursor-pointer animate-slide-up border-l-4 ${isCritical
+        ? "border-l-priority-critical"
+        : request.priority === "high"
           ? "border-l-priority-high"
           : request.priority === "medium"
-          ? "border-l-priority-medium"
-          : "border-l-priority-low"
-      }`}
+            ? "border-l-priority-medium"
+            : "border-l-priority-low"
+        }`}
     >
       {isCritical && <div className="absolute inset-x-0 top-0 h-1 industrial-stripe" />}
 
@@ -178,18 +178,34 @@ export function JobCard({
           )}
         </div>
 
-        <div className="pt-1">
+        <div className="pt-2 pb-1">
           <Button
             type="button"
             size="sm"
-            variant="ghost"
-            className="h-7 px-2 text-[11px]"
+            variant="outline"
+            className={cn(
+              "w-full h-8 text-xs font-bold gap-1.5 transition-all shadow-xs border rounded-md justify-center items-center flex",
+              isExpanded
+                ? "bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-100 border-slate-300 dark:border-slate-700 hover:bg-slate-700 hover:text-white hover:border-slate-700"
+                : "bg-indigo-50 dark:bg-indigo-950 text-indigo-900 dark:text-indigo-100 border-indigo-200 dark:border-indigo-800 hover:bg-indigo-600 hover:text-white hover:border-indigo-600"
+            )}
             onClick={(e) => {
               e.stopPropagation();
               setIsExpanded((prev) => !prev);
             }}
           >
-            {isExpanded ? "ซ่อนรายละเอียด" : "ดูรายละเอียด"}
+            {isExpanded ? (
+              <>
+                <ChevronUp className="h-3.5 w-3.5 shrink-0" />
+                <span>ซ่อนรายละเอียด</span>
+              </>
+            ) : (
+              <>
+                <Eye className="h-3.5 w-3.5 shrink-0" />
+                <span>ดูรายละเอียดเพิ่มเติม</span>
+                <ChevronDown className="h-3.5 w-3.5 shrink-0" />
+              </>
+            )}
           </Button>
         </div>
 

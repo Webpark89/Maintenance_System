@@ -4,10 +4,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
-import { Wrench, ClipboardList, HardHat, ShieldCheck } from "lucide-react";
+import { Wrench, ClipboardList, HardHat, ShieldCheck, UserCheck, Crown } from "lucide-react";
 import { toast } from "sonner";
 
-type Role = "technician" | "requester";
+type Role = "technician" | "requester" | "supervisor";
 
 const Login = () => {
   const navigate = useNavigate();
@@ -15,24 +15,65 @@ const Login = () => {
   const [username, setUsername] = useState("somsak.t");
   const [password, setPassword] = useState("demo1234");
 
+  const handleRoleSelect = (selectedRole: Role) => {
+    setRole(selectedRole);
+    if (selectedRole === "technician") {
+      setUsername("tech.somsak");
+    } else if (selectedRole === "supervisor") {
+      setUsername("sup.somsak");
+    } else {
+      setUsername("req.nopadol");
+    }
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!username || !password) {
       toast.error("กรุณากรอกชื่อผู้ใช้และรหัสผ่าน");
       return;
     }
-    sessionStorage.setItem(
-      "fixflow_user",
-      JSON.stringify({
-        emp_id: role === "technician" ? "TECH001" : "REQ042",
-        name: role === "technician" ? "สมศักดิ์ ช่างไฟ" : "นภดล ฝ่ายผลิต",
-        role,
-        department: role === "technician" ? "Maintenance" : "ฝ่ายผลิต",
-        skills: ["electrical", "facility"],
-      }),
-    );
-    toast.success(`ยินดีต้อนรับ ${role === "technician" ? "ช่างซ่อมบำรุง" : "ผู้แจ้งซ่อม"}`);
-    navigate(role === "technician" ? "/board" : "/request");
+
+    let userPayload = {
+      emp_id: "TECH001",
+      name: "สมศักดิ์ ช่างไฟ",
+      role: role as Role,
+      department: "Maintenance",
+      skills: ["electrical", "facility"],
+    };
+
+    if (role === "supervisor") {
+      userPayload = {
+        emp_id: "SUP001",
+        name: "สมศักดิ์ (หัวหน้าซ่อมบำรุง)",
+        role: "supervisor",
+        department: "แผนกซ่อมบำรุง",
+        skills: ["management", "qc", "approval"],
+      };
+    } else if (role === "requester") {
+      userPayload = {
+        emp_id: "REQ042",
+        name: "นภดล ฝ่ายผลิต",
+        role: "requester",
+        department: "ฝ่ายผลิต",
+        skills: [],
+      };
+    }
+
+    sessionStorage.setItem("fixflow_user", JSON.stringify(userPayload));
+
+    const roleTitleMap: Record<Role, string> = {
+      technician: "ช่างซ่อมบำรุง",
+      supervisor: "หัวหน้าซ่อมบำรุง / ผู้จัดการ",
+      requester: "ผู้แจ้งซ่อม (หน้างาน)",
+    };
+
+    toast.success(`ยินดีต้อนรับเข้าสู่ระบบ: ${roleTitleMap[role]}`);
+
+    if (role === "requester") {
+      navigate("/request");
+    } else {
+      navigate("/board");
+    }
   };
 
   return (
@@ -48,9 +89,9 @@ const Login = () => {
               <Wrench className="h-6 w-6 text-secondary-foreground" strokeWidth={2.5} />
             </div>
             <div>
-              <h1 className="text-2xl font-bold tracking-tight">FixFlow</h1>
+              <h1 className="text-2xl font-bold tracking-tight">FixFlow CMMS</h1>
               <p className="text-xs uppercase tracking-[0.25em] text-primary-foreground/70">
-                Maintenance Operations
+                Maintenance Operations System
               </p>
             </div>
           </div>
@@ -63,23 +104,23 @@ const Login = () => {
             <span className="text-secondary">ไลน์เดิน.</span>
           </h2>
           <p className="text-lg text-primary-foreground/80 max-w-md">
-            กระดานงานแบบ Kanban ให้ช่างหน้างานรับงานเองได้ทันที
-            ลดคอขวดที่หัวหน้างาน ตอบสนองได้รวดเร็วทุกที่ทุกเวลา
+            ระบบบริหารจัดการงานซ่อมบำรุงแบบครบวงจร รองรับสแกน QR Code, ประเมินงาน,
+            เบิกอะไหล่ สรุปวันทำงานจริง และอนุมัติปิดงานด้วย Dual Signatures
           </p>
           <div className="flex gap-4 text-sm">
             <div className="flex items-center gap-2">
               <ShieldCheck className="h-4 w-4 text-secondary" />
-              <span>ISO 55001 Ready</span>
+              <span>Dual Signature QC</span>
             </div>
             <div className="flex items-center gap-2">
               <HardHat className="h-4 w-4 text-secondary" />
-              <span>Mobile-first</span>
+              <span>Mobile-first QR Tag</span>
             </div>
           </div>
         </div>
 
         <div className="relative text-xs text-primary-foreground/50">
-          © 2026 FixFlow CMMS · Designed for Industrial Operations
+          © 2026 FixFlow CMMS · Designed for Industrial Maintenance Operations
         </div>
       </section>
 
@@ -95,22 +136,29 @@ const Login = () => {
 
           <header>
             <h2 className="text-3xl font-bold">เข้าสู่ระบบ</h2>
-            <p className="text-muted-foreground mt-1">เลือกบทบาทของคุณเพื่อเริ่มทำงาน</p>
+            <p className="text-muted-foreground mt-1">เลือกบทบาทผู้ใช้งานเพื่อทดสอบระบบเดโม</p>
           </header>
 
-          {/* Role selector */}
-          <div className="grid grid-cols-2 gap-3">
+          {/* Role selector (3 Roles) */}
+          <div className="grid grid-cols-3 gap-2">
             <RoleCard
               active={role === "technician"}
-              onClick={() => setRole("technician")}
-              icon={<Wrench className="h-6 w-6" />}
-              title="ช่างซ่อมบำรุง"
+              onClick={() => handleRoleSelect("technician")}
+              icon={<Wrench className="h-5 w-5" />}
+              title="ช่างซ่อม"
               subtitle="Technician"
             />
             <RoleCard
+              active={role === "supervisor"}
+              onClick={() => handleRoleSelect("supervisor")}
+              icon={<Crown className="h-5 w-5" />}
+              title="หัวหน้าช่าง"
+              subtitle="Supervisor"
+            />
+            <RoleCard
               active={role === "requester"}
-              onClick={() => setRole("requester")}
-              icon={<ClipboardList className="h-6 w-6" />}
+              onClick={() => handleRoleSelect("requester")}
+              icon={<ClipboardList className="h-5 w-5" />}
               title="ผู้แจ้งซ่อม"
               subtitle="Requester"
             />
@@ -123,7 +171,7 @@ const Login = () => {
                 id="username"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                placeholder="เช่น TECH001"
+                placeholder="เช่น TECH001 หรือ SUP001"
                 className="h-11"
               />
             </div>
@@ -140,12 +188,17 @@ const Login = () => {
             </div>
 
             <Button type="submit" variant="hero" size="lg" className="w-full">
-              เข้าสู่ระบบ
+              เข้าสู่ระบบในฐานะ {role === "supervisor" ? "หัวหน้าช่าง" : role === "technician" ? "ช่างซ่อม" : "ผู้แจ้งซ่อม"}
             </Button>
 
-            <p className="text-xs text-center text-muted-foreground">
-              เดโม: กรอกอะไรก็ได้แล้วกดเข้าสู่ระบบ
-            </p>
+            <div className="p-3 rounded-lg bg-muted/50 text-xs text-muted-foreground space-y-1">
+              <p className="font-semibold text-foreground">💡 หมายเหตุสำหรับการทดสอบระบบ (Demo Mode):</p>
+              <ul className="list-disc pl-4 space-y-0.5 text-[11px]">
+                <li><strong>ผู้แจ้งซ่อม</strong>: เข้าสแกน QR และส่งใบแจ้งซ่อม</li>
+                <li><strong>ช่างซ่อม</strong>: เข้าประเมินงาน เบิกอะไหล่ และอัปเดตงาน</li>
+                <li><strong>หัวหน้าช่าง</strong>: ลงนามอนุมัติ Dual Signature, ตรวจซ้ำ และพิมพ์ QR Code</li>
+              </ul>
+            </div>
           </form>
         </div>
       </section>
@@ -169,21 +222,21 @@ function RoleCard({
   return (
     <Card
       onClick={onClick}
-      className={`p-4 cursor-pointer transition-all border-2 ${
+      className={`p-3 cursor-pointer transition-all border-2 text-center flex flex-col items-center justify-center ${
         active
           ? "border-primary bg-primary/5 shadow-card"
           : "border-border hover:border-primary/40"
       }`}
     >
       <div
-        className={`h-10 w-10 rounded-md grid place-items-center mb-2 ${
+        className={`h-9 w-9 rounded-md grid place-items-center mb-1.5 ${
           active ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
         }`}
       >
         {icon}
       </div>
-      <div className="font-semibold text-sm">{title}</div>
-      <div className="text-xs text-muted-foreground">{subtitle}</div>
+      <div className="font-bold text-xs line-clamp-1">{title}</div>
+      <div className="text-[10px] text-muted-foreground truncate">{subtitle}</div>
     </Card>
   );
 }

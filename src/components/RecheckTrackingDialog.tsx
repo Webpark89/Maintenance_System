@@ -11,6 +11,7 @@ import { RecheckData, WorkRequest } from "@/lib/mockData";
 import { requestStore } from "@/lib/requestStore";
 import { CalendarCheck2, Clock, CheckCircle2, AlertTriangle, UserCheck, ShieldAlert, Sparkles } from "lucide-react";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 
 interface Props {
   request: WorkRequest;
@@ -101,27 +102,28 @@ export function RecheckTrackingDialog({ request, open, onOpenChange }: Props) {
           {/* Round 1 Card */}
           <Card
             onClick={() => setSelectedRound(1)}
-            className={`p-3 cursor-pointer transition-all border-l-4 ${
+            className={`p-3.5 cursor-pointer transition-all border-l-4 ${
               recheck.round1.status === "completed"
                 ? "border-l-emerald-500 bg-card"
                 : recheck.round1.status === "issue_found"
                 ? "border-l-rose-500 bg-card"
                 : "border-l-amber-500 bg-card/60"
-            } ${selectedRound === 1 ? "ring-2 ring-primary" : ""}`}
+            } ${selectedRound === 1 ? "ring-2 ring-primary shadow-sm" : ""}`}
           >
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-1.5 font-bold text-xs text-primary">
-                <Clock className="h-4 w-4" />
-                รอบที่ 1: สัปดาห์ที่ 1 (หลังซ่อม 7 วัน)
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-1.5 font-bold text-xs text-primary min-w-0 flex-1">
+                <Clock className="h-4 w-4 shrink-0 text-amber-500" />
+                <span className="truncate">รอบที่ 1: สัปดาห์ที่ 1 (หลังซ่อม 7 วัน)</span>
               </div>
               <Badge
-                className={
+                className={cn(
+                  "whitespace-nowrap shrink-0 font-bold px-3 py-1 text-[11px] justify-center items-center rounded-full shadow-sm text-center leading-none inline-flex min-w-[80px]",
                   recheck.round1.status === "completed"
-                    ? "bg-emerald-600 text-white text-[10px]"
+                    ? "bg-emerald-600 hover:bg-emerald-600 text-white"
                     : recheck.round1.status === "issue_found"
-                    ? "bg-rose-600 text-white text-[10px]"
-                    : "bg-amber-500 text-white text-[10px]"
-                }
+                    ? "bg-rose-600 hover:bg-rose-600 text-white"
+                    : "bg-amber-500 hover:bg-amber-500 text-white"
+                )}
               >
                 {recheck.round1.status === "completed"
                   ? "ตรวจแล้ว (ปกติ)"
@@ -130,13 +132,14 @@ export function RecheckTrackingDialog({ request, open, onOpenChange }: Props) {
                   : "รอเข้าตรวจ"}
               </Badge>
             </div>
-            <div className="mt-2 text-xs space-y-1">
-              <div className="text-muted-foreground">
-                กำหนดตรวจ: <span className="font-semibold text-foreground">{recheck.round1.scheduled_date}</span>
+            <div className="mt-2.5 text-xs space-y-1 border-t border-border/60 pt-2">
+              <div className="text-muted-foreground flex items-center justify-between">
+                <span>กำหนดตรวจ:</span>
+                <span className="font-semibold text-foreground">{recheck.round1.scheduled_date}</span>
               </div>
               {recheck.round1.checked_at && (
                 <>
-                  <div className="text-foreground font-medium pt-1 border-t">
+                  <div className="text-foreground font-medium pt-1">
                     ผู้ตรวจ: {recheck.round1.inspector_name} ({recheck.round1.inspector_department})
                   </div>
                   <div className="text-[11px] text-muted-foreground line-clamp-2">"{recheck.round1.result_summary}"</div>
@@ -148,27 +151,28 @@ export function RecheckTrackingDialog({ request, open, onOpenChange }: Props) {
           {/* Round 2 Card */}
           <Card
             onClick={() => setSelectedRound(2)}
-            className={`p-3 cursor-pointer transition-all border-l-4 ${
+            className={`p-3.5 cursor-pointer transition-all border-l-4 ${
               recheck.round2.status === "completed"
                 ? "border-l-emerald-500 bg-card"
                 : recheck.round2.status === "issue_found"
                 ? "border-l-rose-500 bg-card"
                 : "border-l-amber-500 bg-card/60"
-            } ${selectedRound === 2 ? "ring-2 ring-primary" : ""}`}
+            } ${selectedRound === 2 ? "ring-2 ring-primary shadow-sm" : ""}`}
           >
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-1.5 font-bold text-xs text-primary">
-                <Clock className="h-4 w-4" />
-                รอบที่ 2: สัปดาห์ที่ 2 (หลังซ่อม 14 วัน)
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-1.5 font-bold text-xs text-primary min-w-0 flex-1">
+                <Clock className="h-4 w-4 shrink-0 text-amber-500" />
+                <span className="truncate">รอบที่ 2: สัปดาห์ที่ 2 (หลังซ่อม 14 วัน)</span>
               </div>
               <Badge
-                className={
+                className={cn(
+                  "whitespace-nowrap shrink-0 font-bold px-3 py-1 text-[11px] justify-center items-center rounded-full shadow-sm text-center leading-none inline-flex min-w-[80px]",
                   recheck.round2.status === "completed"
-                    ? "bg-emerald-600 text-white text-[10px]"
+                    ? "bg-emerald-600 hover:bg-emerald-600 text-white"
                     : recheck.round2.status === "issue_found"
-                    ? "bg-rose-600 text-white text-[10px]"
-                    : "bg-amber-500 text-white text-[10px]"
-                }
+                    ? "bg-rose-600 hover:bg-rose-600 text-white"
+                    : "bg-amber-500 hover:bg-amber-500 text-white"
+                )}
               >
                 {recheck.round2.status === "completed"
                   ? "ตรวจแล้ว (ปกติ)"
@@ -177,13 +181,14 @@ export function RecheckTrackingDialog({ request, open, onOpenChange }: Props) {
                   : "รอเข้าตรวจ"}
               </Badge>
             </div>
-            <div className="mt-2 text-xs space-y-1">
-              <div className="text-muted-foreground">
-                กำหนดตรวจ: <span className="font-semibold text-foreground">{recheck.round2.scheduled_date}</span>
+            <div className="mt-2.5 text-xs space-y-1 border-t border-border/60 pt-2">
+              <div className="text-muted-foreground flex items-center justify-between">
+                <span>กำหนดตรวจ:</span>
+                <span className="font-semibold text-foreground">{recheck.round2.scheduled_date}</span>
               </div>
               {recheck.round2.checked_at && (
                 <>
-                  <div className="text-foreground font-medium pt-1 border-t">
+                  <div className="text-foreground font-medium pt-1">
                     ผู้ตรวจ: {recheck.round2.inspector_name} ({recheck.round2.inspector_department})
                   </div>
                   <div className="text-[11px] text-muted-foreground line-clamp-2">"{recheck.round2.result_summary}"</div>
