@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { PriorityBadge } from "./PriorityBadge";
 import { StatusBadge } from "./StatusBadge";
 import { CATEGORY_LABEL, Status, timeAgo, WorkRequest, getTechnicianName, getTechnicianDepartment } from "@/lib/mockData";
-import { Clock, MapPin, User, Zap, Wrench, Building2, Droplets, Cpu, Paperclip, Gauge, Waves, CircleHelp, ShoppingCart, FileCheck2, CalendarCheck2, ChevronDown, ChevronUp, Eye } from "lucide-react";
+import { Clock, MapPin, User, Zap, Wrench, Building2, Droplets, Cpu, Paperclip, Gauge, Waves, CircleHelp, ShoppingCart, FileCheck2, CalendarCheck2, ChevronDown, ChevronUp, Eye, Printer } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const CATEGORY_ICON = {
@@ -27,6 +27,7 @@ interface Props {
   onOpenStockRequisition?: (id: string) => void;
   onOpenDualSignature?: (id: string) => void;
   onOpenRecheck?: (id: string) => void;
+  onOpenPrint?: (request: WorkRequest) => void;
   showAccept?: boolean;
   showQuickActions?: boolean;
   draggable?: boolean;
@@ -42,6 +43,7 @@ export function JobCard({
   onOpenStockRequisition,
   onOpenDualSignature,
   onOpenRecheck,
+  onOpenPrint,
   showAccept = true,
   showQuickActions = true,
   draggable = false,
@@ -257,54 +259,68 @@ export function JobCard({
               <Button
                 type="button"
                 size="sm"
-                variant="outline"
-                className="h-7 text-[10px] px-2 gap-1 bg-amber-500/10 border-amber-500/30 text-amber-700 hover:bg-amber-500/20"
+                variant="ghost"
+                className="h-8 text-[11px] font-semibold px-2.5 gap-1.5 rounded-md border bg-amber-100 dark:bg-amber-950/40 border-amber-300 dark:border-amber-700/60 text-amber-900 dark:text-amber-200 hover:bg-amber-600 hover:text-white dark:hover:bg-amber-600 dark:hover:text-white hover:border-amber-600 transition-all shadow-xs"
                 onClick={(e) => {
                   e.stopPropagation();
                   onOpenStockRequisition?.(request.request_id);
                 }}
               >
-                <ShoppingCart className="h-3 w-3" />
-                เบิกอะไหล่ {request.stock_requisition?.parts_ready ? "✅ (อะไหล่พร้อมแล้ว)" : request.stock_requisition?.requisitions?.length ? `(${request.stock_requisition.requisitions.length} รายการ)` : ""}
+                <ShoppingCart className="h-3.5 w-3.5 shrink-0" />
+                <span>เบิกอะไหล่ {request.stock_requisition?.parts_ready ? "✅ (พร้อม)" : request.stock_requisition?.requisitions?.length ? `(${request.stock_requisition.requisitions.length})` : ""}</span>
               </Button>
 
               <Button
                 type="button"
                 size="sm"
-                variant="outline"
-                className="h-7 text-[10px] px-2 gap-1 bg-violet-500/10 border-violet-500/30 text-violet-700 hover:bg-violet-500/20"
+                variant="ghost"
+                className="h-8 text-[11px] font-semibold px-2.5 gap-1.5 rounded-md border bg-purple-100 dark:bg-purple-950/40 border-purple-300 dark:border-purple-700/60 text-purple-900 dark:text-purple-200 hover:bg-purple-600 hover:text-white dark:hover:bg-purple-600 dark:hover:text-white hover:border-purple-600 transition-all shadow-xs"
                 onClick={(e) => {
                   e.stopPropagation();
                   onOpenDualSignature?.(request.request_id);
                 }}
               >
-                <FileCheck2 className="h-3 w-3" />
-                อนุมัติ 2 คน {request.dual_approval?.status === "approved" ? "✅ (อนุมัติแล้ว)" : request.dual_approval?.status === "partial" ? "(อนุมัติ 1/2)" : "(0/2)"}
+                <FileCheck2 className="h-3.5 w-3.5 shrink-0" />
+                <span>อนุมัติ 2 คน {request.dual_approval?.status === "approved" ? "✅ (เรียบร้อย)" : request.dual_approval?.status === "partial" ? "(1/2)" : "(0/2)"}</span>
               </Button>
 
               <Button
                 type="button"
                 size="sm"
-                variant="outline"
-                className="h-7 text-[10px] px-2 gap-1 bg-emerald-500/10 border-emerald-500/30 text-emerald-700 hover:bg-emerald-500/20"
+                variant="ghost"
+                className="h-8 text-[11px] font-semibold px-2.5 gap-1.5 rounded-md border bg-emerald-100 dark:bg-emerald-950/40 border-emerald-300 dark:border-emerald-700/60 text-emerald-900 dark:text-emerald-200 hover:bg-emerald-600 hover:text-white dark:hover:bg-emerald-600 dark:hover:text-white hover:border-emerald-600 transition-all shadow-xs"
                 onClick={(e) => {
                   e.stopPropagation();
                   onOpenRecheck?.(request.request_id);
                 }}
               >
-                <CalendarCheck2 className="h-3 w-3" />
-                ตรวจซ้ำ 2 อาทิตย์ {request.recheck_data?.round1?.status === "completed" ? "✅" : ""}
+                <CalendarCheck2 className="h-3.5 w-3.5 shrink-0" />
+                <span>ตรวจซ้ำ 2 อาทิตย์ {request.recheck_data?.round1?.status === "completed" ? "✅" : ""}</span>
+              </Button>
+
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                className="h-8 text-[11px] font-semibold px-2.5 gap-1.5 rounded-md border bg-sky-100 dark:bg-sky-950/40 border-sky-300 dark:border-sky-700/60 text-sky-900 dark:text-sky-200 hover:bg-sky-600 hover:text-white dark:hover:bg-sky-600 dark:hover:text-white hover:border-sky-600 transition-all shadow-xs"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onOpenPrint?.(request);
+                }}
+              >
+                <Printer className="h-3.5 w-3.5 shrink-0" />
+                <span>พิมพ์ A4</span>
               </Button>
             </div>
           </div>
         )}
 
         {showQuickActions && request.status !== "open" && request.status !== "complete" && isExpanded && (
-          <div className="grid grid-cols-3 gap-1 pt-1">
+          <div className="grid grid-cols-3 gap-1 pt-1 font-semibold text-[11px]">
             <Button
               size="sm"
-              variant="outline"
-              className="h-8 px-2 text-[11px]"
+              variant="ghost"
+              className="h-8 px-2 border bg-amber-50 dark:bg-amber-950/30 border-amber-300 dark:border-amber-700/50 text-amber-900 dark:text-amber-200 hover:bg-amber-600 hover:text-white dark:hover:bg-amber-600 dark:hover:text-white transition-all shadow-xs"
               onClick={(e) => {
                 e.stopPropagation();
                 onChangeStatus?.(request.request_id, "assess", "ประเมินงาน");
@@ -314,8 +330,8 @@ export function JobCard({
             </Button>
             <Button
               size="sm"
-              variant="outline"
-              className="h-8 px-2 text-[11px]"
+              variant="ghost"
+              className="h-8 px-2 border bg-rose-50 dark:bg-rose-950/30 border-rose-300 dark:border-rose-700/50 text-rose-900 dark:text-rose-200 hover:bg-rose-600 hover:text-white dark:hover:bg-rose-600 dark:hover:text-white transition-all shadow-xs"
               onClick={(e) => {
                 e.stopPropagation();
                 onChangeStatus?.(request.request_id, "waiting", "รออะไหล่");
@@ -326,7 +342,7 @@ export function JobCard({
             <Button
               size="sm"
               variant="industrial"
-              className="h-8 px-2 text-[11px]"
+              className="h-8 px-2 text-[11px] font-semibold bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs"
               onClick={(e) => {
                 e.stopPropagation();
                 onOpenDualSignature?.(request.request_id);

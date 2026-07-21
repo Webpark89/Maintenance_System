@@ -151,6 +151,7 @@ const RequestForm = () => {
   const currentUserId = currentUser.emp_id || "REQ042";
   const currentDepartment = currentUser.department || "ฝ่ายผลิต";
   const photoInputRef = useRef<HTMLInputElement>(null);
+  const directCameraInputRef = useRef<HTMLInputElement>(null);
   const qrImageInputRef = useRef<HTMLInputElement>(null);
   const toastedNotificationIdsRef = useRef<Set<string>>(new Set());
 
@@ -1120,13 +1121,21 @@ const RequestForm = () => {
             </div>
 
             {/* Photo attachments */}
-            <div className="space-y-3 p-3 rounded-md border-2 border-dashed border-border">
-              <div className="flex items-center justify-between gap-3">
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <Camera className="h-4 w-4" />
-                  แนบรูป/เอกสาร (รูปก่อนซ่อม, เอกสาร, ใบแจ้งอื่น)
+            <div className="space-y-3 p-3 rounded-md border-2 border-dashed border-border bg-slate-50/40 dark:bg-slate-900/30">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                  <Camera className="h-4 w-4 text-sky-500" />
+                  แนบรูป/เอกสารประกอบการแจ้งซ่อม (สูงสุด 10 รูป)
                 </div>
-                <>
+                <div className="flex items-center gap-2">
+                  <input
+                    ref={directCameraInputRef}
+                    type="file"
+                    accept="image/*"
+                    capture="environment"
+                    className="hidden"
+                    onChange={(e) => handlePickPhotos(e.target.files)}
+                  />
                   <input
                     ref={photoInputRef}
                     type="file"
@@ -1137,18 +1146,29 @@ const RequestForm = () => {
                   />
                   <Button
                     type="button"
+                    variant="default"
+                    size="sm"
+                    className="bg-sky-600 hover:bg-sky-700 text-white font-semibold gap-1.5 shadow-sm text-xs"
+                    onClick={() => directCameraInputRef.current?.click()}
+                  >
+                    <Camera className="h-4 w-4" />
+                    ถ่ายรูปหน้างาน
+                  </Button>
+                  <Button
+                    type="button"
                     variant="outline"
                     size="sm"
+                    className="gap-1.5 text-xs"
                     onClick={() => photoInputRef.current?.click()}
                   >
-                    <ImagePlus className="h-4 w-4 mr-1" />
-                    เลือกรูป
+                    <ImagePlus className="h-4 w-4" />
+                    เลือกรูป/ไฟล์
                   </Button>
-                </>
+                </div>
               </div>
 
               {attachments.length > 0 && (
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2">
                   {attachments.map((attachment) => (
                     <div key={attachment.attachment_id} className="relative group rounded-md overflow-hidden border">
                       {attachment.mime_type?.startsWith("image/") || attachment.url.startsWith("data:image") ? (
@@ -1168,7 +1188,7 @@ const RequestForm = () => {
                       <button
                         type="button"
                         onClick={() => removeAttachment(attachment.attachment_id)}
-                        className="absolute top-1 right-1 rounded bg-black/70 text-white text-[10px] px-1.5 py-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
+                        className="absolute top-1 right-1 rounded bg-black/70 text-white text-[10px] px-1.5 py-0.5 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity"
                       >
                         ลบ
                       </button>
@@ -1183,7 +1203,7 @@ const RequestForm = () => {
               <Button type="button" variant="outline" onClick={reset} className="sm:w-auto">
                 ล้างข้อมูล
               </Button>
-              <Button type="submit" variant="hero" size="lg" className="flex-1">
+              <Button type="submit" variant="hero" size="lg" className="flex-1 font-bold">
                 <Send className="h-4 w-4 mr-1" />
                 ส่งคำขอแจ้งซ่อม
               </Button>
@@ -1191,6 +1211,25 @@ const RequestForm = () => {
           </form>
         </Card>
       </main>
+
+      {/* Mobile Sticky Action Footer */}
+      <div className="fixed bottom-0 left-0 right-0 p-3 bg-background/95 backdrop-blur border-t border-border shadow-lg sm:hidden z-30 flex items-center gap-2">
+        <Button type="button" variant="outline" size="sm" onClick={reset} className="px-3">
+          ล้าง
+        </Button>
+        <Button
+          type="button"
+          variant="hero"
+          className="flex-1 font-bold shadow-md gap-2"
+          onClick={() => {
+            const form = document.querySelector("form");
+            if (form) form.requestSubmit();
+          }}
+        >
+          <Send className="h-4 w-4" />
+          ส่งคำขอแจ้งซ่อม
+        </Button>
+      </div>
 
       <Dialog open={historyOpen} onOpenChange={setHistoryOpen}>
         <DialogContent className="max-w-2xl max-h-[80vh] overflow-hidden flex flex-col">

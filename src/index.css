@@ -108,6 +108,11 @@
     @apply border-border;
   }
 
+  html, body, #root {
+    max-width: 100vw;
+    overflow-x: hidden;
+  }
+
   html {
     font-family: 'Sarabun', 'IBM Plex Sans Thai', system-ui, sans-serif;
   }

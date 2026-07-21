@@ -745,13 +745,13 @@ function OnSiteAssessmentFields({
                 <div className="flex items-center justify-between font-semibold text-sky-900 dark:text-sky-200">
                   <span className="flex items-center gap-1">
                     <CalendarDays className="h-3.5 w-3.5 text-sky-600" />
-                    สรุปเวลาซ่อมบำรุงจริง (Working Days Logic):
+                    สรุปเวลาซ่อมบำรุงจริง:
                   </span>
                   <span className="bg-sky-600 text-white px-2 py-0.5 rounded text-[11px]">
                     {duration.workingDays} วันทำงาน
                   </span>
                 </div>
-                <div className="text-[11px] text-sky-700 dark:text-sky-300 flex items-center justify-between">
+                <div className="text-[11px] text-sky-700 dark:text-sky-300 flex items-center justify-between pt-1">
                   <span>วันตามปฏิทินทั้งหมด: {duration.totalCalendarDays} วัน</span>
                   <span>ติดเสาร์-อาทิตย์/วันหยุด: {duration.weekendDaysCount + duration.holidaysCount} วัน</span>
                 </div>
@@ -776,6 +776,91 @@ function OnSiteAssessmentFields({
         <Label className="text-xs">มาตรการชั่วคราว</Label>
         <Textarea rows={3} value={temporaryMeasure} onChange={(e) => setTemporaryMeasure(e.target.value)} placeholder="มาตรการแก้ไขเฉพาะหน้า หรือแนวทางลดผลกระทบ" />
       </div>
+    </div>
+  );
+}
+
+function AssessmentPhotoSection({
+  photos,
+  handlePhotoPick,
+  removeAssessmentPhoto,
+  fileInputRef,
+}: {
+  photos: RequestAttachment[];
+  handlePhotoPick: (files: FileList | null) => Promise<void>;
+  removeAssessmentPhoto: (id: string) => void;
+  fileInputRef: React.RefObject<HTMLInputElement>;
+}) {
+  const directCameraInputRef = useRef<HTMLInputElement>(null);
+
+  return (
+    <div className="space-y-3">
+      <div className="flex flex-wrap items-center justify-between gap-3 p-3 rounded-md border-2 border-dashed border-border bg-slate-50/40 dark:bg-slate-900/30">
+        <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
+          <Camera className="h-4 w-4 text-sky-500" />
+          รูปประกอบการประเมินหน้างาน (ไม่เกิน 10 รูป)
+        </div>
+        <div className="flex items-center gap-2">
+          <input
+            ref={directCameraInputRef}
+            type="file"
+            accept="image/*"
+            capture="environment"
+            className="hidden"
+            onChange={(e) => void handlePhotoPick(e.target.files)}
+          />
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            multiple
+            className="hidden"
+            onChange={(e) => void handlePhotoPick(e.target.files)}
+          />
+          <Button
+            type="button"
+            variant="default"
+            size="sm"
+            className="bg-sky-600 hover:bg-sky-700 text-white font-semibold gap-1.5 shadow-sm text-xs"
+            onClick={() => directCameraInputRef.current?.click()}
+          >
+            <Camera className="h-4 w-4" />
+            ถ่ายรูปหน้างาน
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="gap-1.5 text-xs"
+            onClick={() => fileInputRef.current?.click()}
+          >
+            <Image className="h-4 w-4" />
+            เลือกรูป
+          </Button>
+        </div>
+      </div>
+
+      {photos.length > 0 ? (
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+          {photos.map((photo) => (
+            <div key={photo.attachment_id} className="relative rounded-md overflow-hidden border group">
+              <img src={photo.url} alt={photo.name} className="h-28 w-full object-cover" />
+              <button
+                type="button"
+                onClick={() => removeAssessmentPhoto(photo.attachment_id)}
+                className="absolute top-1 right-1 rounded bg-black/70 text-white text-[10px] px-1.5 py-0.5 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity"
+              >
+                ลบ
+              </button>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="text-center py-8 border-2 border-dashed border-border rounded-lg text-muted-foreground text-sm">
+          <Paperclip className="h-8 w-8 mx-auto mb-2 opacity-30" />
+          ยังไม่มีรูปประกอบการประเมิน
+        </div>
+      )}
     </div>
   );
 }

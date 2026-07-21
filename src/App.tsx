@@ -11,6 +11,8 @@ import NotificationCenter from "./pages/NotificationCenter.tsx";
 import AssetManagement from "./pages/AssetManagement.tsx";
 import NotFound from "./pages/NotFound.tsx";
 
+import Dashboard from "./pages/Dashboard.tsx";
+
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -21,6 +23,7 @@ const App = () => (
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Login />} />
+          <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/board" element={<TechnicianBoard />} />
           <Route path="/assets" element={<AssetManagement />} />
           <Route path="/request" element={<RequestForm />} />

@@ -375,9 +375,9 @@ export const requestStore = {
 
       updated.status = newStatus;
 
-      // Auto update request status to 'complete' if both approved
-      const nextReqStatus = newStatus === "approved" ? ("complete" as const) : req.status;
-      const nextSubStatus = newStatus === "approved" ? ("finished" as const) : req.sub_status;
+      // Auto update request status to 'done' (ปิดงาน) if both approved, ready for 2-week recheck tracking
+      const nextReqStatus = newStatus === "approved" ? ("done" as const) : req.status;
+      const nextSubStatus = newStatus === "approved" ? ("closed" as const) : req.sub_status;
 
       // Initialize 2-week recheck schedule when completed
       let recheckData = req.recheck_data;
@@ -443,8 +443,21 @@ export const requestStore = {
         [roundKey]: updatedRound,
       };
 
+      let nextStatus = req.status;
+      let nextSubStatus = req.sub_status;
+
+      if (round === 1 && result.status === "completed") {
+        nextStatus = "qc1";
+        nextSubStatus = "qc-round1";
+      } else if (round === 2 && result.status === "completed") {
+        nextStatus = "complete";
+        nextSubStatus = "finished";
+      }
+
       return {
         ...req,
+        status: nextStatus,
+        sub_status: nextSubStatus,
         recheck_data: updatedRecheck,
       };
     });

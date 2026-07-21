@@ -115,7 +115,7 @@ export function DualSignatureDialog({ request, open, onOpenChange }: Props) {
     const otherApproved = isSlot1 ? !!approval.approver2 : !!approval.approver1;
 
     if (otherApproved) {
-      toast.success("อนุมัติครบ 2 ลายเซ็นสมบูรณ์! สถานะงานอัปเดตเป็น 'เสร็จสิ้น'");
+      toast.success("อนุมัติครบ 2 ลายเซ็นสมบูรณ์! สถานะงานอัปเดตเป็น 'ปิดงาน' (เริ่มติดตาม 2 อาทิตย์)");
     } else {
       toast.info(`ลงลายเซ็นอนุมัติท่านที่ ${isSlot1 ? 1 : 2} เรียบร้อยแล้ว (รออีก 1 ท่าน)`);
     }
