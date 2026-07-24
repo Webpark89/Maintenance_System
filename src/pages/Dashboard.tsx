@@ -5,6 +5,9 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { WorkOrderPrintDialog } from "@/components/WorkOrderPrintDialog";
 import { ExportDataDialog } from "@/components/ExportDataDialog";
+import { PriorityBadge } from "@/components/PriorityBadge";
+import { StatusBadge } from "@/components/StatusBadge";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { requestStore, useRequests } from "@/lib/requestStore";
 import { CATEGORY_LABEL, STATUS_LABEL, PRIORITY_LABEL, WorkRequest } from "@/lib/mockData";
 import {
@@ -49,28 +52,36 @@ import {
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 
-const COLORS = ["#0284c7", "#eab308", "#ef4444", "#06b6d4", "#f97316", "#8b5cf6", "#10b981"];
+const COLORS = [
+  "hsl(var(--chart-1))",
+  "hsl(var(--chart-2))",
+  "hsl(var(--chart-3))",
+  "hsl(var(--chart-4))",
+  "hsl(var(--chart-5))",
+  "hsl(var(--chart-6))",
+  "hsl(var(--chart-7))",
+];
 
 const CustomTooltip = ({ active, payload, label }: any) => {
   if (active && payload && payload.length) {
     const item = payload[0];
     const itemName = label || item.name || item.payload?.name || "";
     const value = item.value;
-    const color = item.color || item.fill || item.payload?.fill || "#38bdf8";
+    const color = item.color || item.fill || item.payload?.fill || "hsl(var(--primary))";
 
     return (
-      <div className="bg-slate-900 border-2 border-sky-400 p-3 rounded-lg shadow-2xl text-slate-100 text-xs min-w-[150px] z-50">
+      <div className="bg-card border border-border p-3 rounded-lg shadow-2xl text-card-foreground text-xs min-w-[150px] z-50">
         {itemName && (
-          <p className="font-bold text-white text-sm mb-1.5 border-b border-slate-700 pb-1 flex items-center justify-between">
+          <p className="font-bold text-foreground text-sm mb-1.5 border-b border-border pb-1 flex items-center justify-between">
             <span>{itemName}</span>
           </p>
         )}
         <div className="flex items-center justify-between gap-3 pt-0.5">
           <div className="flex items-center gap-1.5">
             <span className="w-3 h-3 rounded-full shrink-0 shadow-sm" style={{ backgroundColor: color }} />
-            <span className="text-slate-200 font-medium">{item.name === "value" ? "จำนวนงาน" : item.name}:</span>
+            <span className="text-muted-foreground font-medium">{item.name === "value" ? "จำนวนงาน" : item.name}:</span>
           </div>
-          <span className="font-black text-sky-300 font-mono text-base">{value}</span>
+          <span className="font-black text-primary font-mono text-base">{value}</span>
         </div>
       </div>
     );
@@ -160,56 +171,56 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-900 text-slate-100 font-sans pb-12">
+    <div className="min-h-screen bg-background text-foreground font-sans pb-12">
       {/* Top Navbar */}
-      <header className="sticky top-0 z-40 bg-slate-950/90 backdrop-blur border-b border-slate-800">
+      <header className="sticky top-0 z-40 bg-card/90 backdrop-blur border-b border-border">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex items-center justify-between gap-2">
           <div className="flex items-center gap-2.5 min-w-0">
-            <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg bg-gradient-to-tr from-sky-500 to-cyan-400 flex items-center justify-center font-bold text-white shadow-lg shadow-sky-500/20 shrink-0">
+            <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg bg-gradient-primary flex items-center justify-center font-bold text-primary-foreground shadow-sm shrink-0">
               M
             </div>
             <div className="min-w-0">
-              <h1 className="font-bold text-sm sm:text-base text-white tracking-tight leading-tight truncate">
+              <h1 className="font-bold text-sm sm:text-base text-foreground tracking-tight leading-tight truncate">
                 Dashboard <span className="hidden sm:inline">Executive Maintenance</span>
               </h1>
-              <p className="text-[10px] sm:text-[11px] text-slate-400 truncate hidden sm:block">ระบบบริหารจัดการและสรุปผลสถิติงานซ่อมบำรุง</p>
+              <p className="text-2xs sm:text-xs text-muted-foreground truncate hidden sm:block">ระบบบริหารจัดการและสรุปผลสถิติงานซ่อมบำรุง</p>
             </div>
           </div>
 
           {/* Desktop Navigation Links (Show on md+) */}
-          <nav className="hidden md:flex items-center gap-1 bg-slate-900/80 p-1 rounded-lg border border-slate-800 text-xs">
+          <nav className="hidden md:flex items-center gap-1 bg-muted/60 p-1 rounded-lg border border-border text-xs">
             <NavLink
               to="/dashboard"
-              className="px-3 py-1.5 rounded-md font-medium text-slate-300 hover:text-white transition"
-              activeClassName="bg-sky-600 text-white shadow-sm font-semibold"
+              className="px-3 py-1.5 rounded-md font-medium text-muted-foreground hover:text-foreground transition"
+              activeClassName="bg-primary text-primary-foreground shadow-xs font-semibold"
             >
               <LayoutDashboard className="h-3.5 w-3.5 inline mr-1.5" /> Dashboard
             </NavLink>
             <NavLink
               to="/board"
-              className="px-3 py-1.5 rounded-md font-medium text-slate-300 hover:text-white transition"
-              activeClassName="bg-sky-600 text-white shadow-sm font-semibold"
+              className="px-3 py-1.5 rounded-md font-medium text-muted-foreground hover:text-foreground transition"
+              activeClassName="bg-primary text-primary-foreground shadow-xs font-semibold"
             >
               <Wrench className="h-3.5 w-3.5 inline mr-1.5" /> บอร์ดงานซ่อม
             </NavLink>
             <NavLink
               to="/request"
-              className="px-3 py-1.5 rounded-md font-medium text-slate-300 hover:text-white transition"
-              activeClassName="bg-sky-600 text-white shadow-sm font-semibold"
+              className="px-3 py-1.5 rounded-md font-medium text-muted-foreground hover:text-foreground transition"
+              activeClassName="bg-primary text-primary-foreground shadow-xs font-semibold"
             >
               <PlusCircle className="h-3.5 w-3.5 inline mr-1.5" /> แจ้งซ่อมใหม่
             </NavLink>
             <NavLink
               to="/assets"
-              className="px-3 py-1.5 rounded-md font-medium text-slate-300 hover:text-white transition"
-              activeClassName="bg-sky-600 text-white shadow-sm font-semibold"
+              className="px-3 py-1.5 rounded-md font-medium text-muted-foreground hover:text-foreground transition"
+              activeClassName="bg-primary text-primary-foreground shadow-xs font-semibold"
             >
               <Building className="h-3.5 w-3.5 inline mr-1.5" /> ทรัพย์สิน & QR
             </NavLink>
             <NavLink
               to="/notifications"
-              className="px-3 py-1.5 rounded-md font-medium text-slate-300 hover:text-white transition"
-              activeClassName="bg-sky-600 text-white shadow-sm font-semibold"
+              className="px-3 py-1.5 rounded-md font-medium text-muted-foreground hover:text-foreground transition"
+              activeClassName="bg-primary text-primary-foreground shadow-xs font-semibold"
             >
               <Bell className="h-3.5 w-3.5 inline mr-1.5" /> แจ้งเตือน
             </NavLink>
@@ -217,19 +228,20 @@ export default function Dashboard() {
 
           {/* Desktop Actions (Show on md+) */}
           <div className="hidden md:flex items-center gap-2 shrink-0">
+            <ThemeToggle className="h-8" />
             <Button
               onClick={() => setIsExportDialogOpen(true)}
               variant="outline"
               size="sm"
-              className="bg-emerald-950/40 border-emerald-800/80 text-emerald-300 hover:bg-emerald-900/60 text-xs px-3 h-8 gap-1.5"
+              className="text-xs px-3 h-8 gap-1.5 border-success/40 text-success hover:bg-success/10"
             >
-              <FileSpreadsheet className="h-3.5 w-3.5 text-emerald-400" /> Export Excel
+              <FileSpreadsheet className="h-3.5 w-3.5 text-success" /> Export Excel
             </Button>
             <Button
               onClick={() => navigate("/")}
               variant="ghost"
               size="sm"
-              className="text-slate-400 hover:text-white text-xs gap-1 px-2 h-8"
+              className="text-muted-foreground hover:text-foreground text-xs gap-1 px-2 h-8"
             >
               <LogOut className="h-3.5 w-3.5" /> ออก
             </Button>
@@ -237,22 +249,23 @@ export default function Dashboard() {
 
           {/* Mobile Hamburger Menu (Show on mobile) */}
           <div className="flex items-center gap-2 md:hidden">
+            <ThemeToggle className="h-8 px-2 text-xs" />
             <Sheet>
               <SheetTrigger asChild>
-                <Button variant="ghost" size="icon" className="text-white hover:bg-white/10 h-9 w-9">
+                <Button variant="ghost" size="icon" className="h-9 w-9">
                   <Menu className="h-6 w-6" />
                 </Button>
               </SheetTrigger>
-              <SheetContent side="right" className="bg-slate-950 text-slate-100 border-slate-800 p-6 flex flex-col justify-between">
+              <SheetContent side="right" className="bg-card text-card-foreground border-border p-6 flex flex-col justify-between">
                 <div className="space-y-6">
-                  <SheetHeader className="text-left border-b border-slate-800 pb-4">
+                  <SheetHeader className="text-left border-b border-border pb-4">
                     <div className="flex items-center gap-2.5">
-                      <div className="h-8 w-8 rounded-md bg-sky-500 text-white font-bold grid place-items-center">
+                      <div className="h-8 w-8 rounded-md bg-primary text-primary-foreground font-bold grid place-items-center">
                         M
                       </div>
                       <div>
-                        <SheetTitle className="text-white text-base font-bold">FixFlow Dashboard</SheetTitle>
-                        <SheetDescription className="text-xs text-slate-400">ระบบบริหารจัดการและสรุปสถิติ</SheetDescription>
+                        <SheetTitle className="text-foreground text-base font-bold">FixFlow Dashboard</SheetTitle>
+                        <SheetDescription className="text-xs text-muted-foreground">ระบบบริหารจัดการและสรุปสถิติ</SheetDescription>
                       </div>
                     </div>
                   </SheetHeader>
@@ -260,64 +273,64 @@ export default function Dashboard() {
                   <div className="space-y-2 pt-2">
                     <Button
                       variant="outline"
-                      className="w-full justify-start gap-3 bg-sky-950/40 border-sky-800/80 text-sky-300 hover:bg-sky-900/60 h-11 text-sm font-semibold"
+                      className="w-full justify-start gap-3 h-11 text-sm font-semibold"
                       onClick={() => navigate("/dashboard")}
                     >
-                      <LayoutDashboard className="h-4 w-4 text-sky-400" />
+                      <LayoutDashboard className="h-4 w-4 text-accent" />
                       Dashboard สถิติภาพรวม
                     </Button>
 
                     <Button
                       variant="outline"
-                      className="w-full justify-start gap-3 bg-emerald-950/40 border-emerald-800/80 text-emerald-300 hover:bg-emerald-900/60 h-11 text-sm font-semibold"
+                      className="w-full justify-start gap-3 h-11 text-sm font-semibold text-success border-success/40"
                       onClick={() => setIsExportDialogOpen(true)}
                     >
-                      <FileSpreadsheet className="h-4 w-4 text-emerald-400" />
+                      <FileSpreadsheet className="h-4 w-4 text-success" />
                       Export Data (Excel / CSV)
                     </Button>
 
                     <Button
                       variant="outline"
-                      className="w-full justify-start gap-3 bg-slate-900 border-slate-800 text-slate-200 hover:bg-slate-800 h-11 text-sm font-semibold"
+                      className="w-full justify-start gap-3 h-11 text-sm font-semibold"
                       onClick={() => navigate("/board")}
                     >
-                      <Wrench className="h-4 w-4 text-cyan-400" />
+                      <Wrench className="h-4 w-4 text-accent" />
                       บอร์ดจัดการงานซ่อม
                     </Button>
 
                     <Button
                       variant="outline"
-                      className="w-full justify-start gap-3 bg-slate-900 border-slate-800 text-slate-200 hover:bg-slate-800 h-11 text-sm font-semibold"
+                      className="w-full justify-start gap-3 h-11 text-sm font-semibold"
                       onClick={() => navigate("/request")}
                     >
-                      <PlusCircle className="h-4 w-4 text-emerald-400" />
+                      <PlusCircle className="h-4 w-4 text-success" />
                       สร้างใบแจ้งซ่อมใหม่
                     </Button>
 
                     <Button
                       variant="outline"
-                      className="w-full justify-start gap-3 bg-slate-900 border-slate-800 text-slate-200 hover:bg-slate-800 h-11 text-sm font-semibold"
+                      className="w-full justify-start gap-3 h-11 text-sm font-semibold"
                       onClick={() => navigate("/assets")}
                     >
-                      <Building className="h-4 w-4 text-amber-400" />
+                      <Building className="h-4 w-4 text-warning" />
                       ทรัพย์สิน & QR Tag
                     </Button>
 
                     <Button
                       variant="outline"
-                      className="w-full justify-start gap-3 bg-slate-900 border-slate-800 text-slate-200 hover:bg-slate-800 h-11 text-sm font-semibold"
+                      className="w-full justify-start gap-3 h-11 text-sm font-semibold"
                       onClick={() => navigate("/notifications")}
                     >
-                      <Bell className="h-4 w-4 text-violet-400" />
+                      <Bell className="h-4 w-4 text-primary" />
                       ศูนย์แจ้งเตือน
                     </Button>
                   </div>
                 </div>
 
-                <div className="border-t border-slate-800 pt-4">
+                <div className="border-t border-border pt-4">
                   <Button
                     variant="ghost"
-                    className="w-full justify-start gap-2 text-rose-400 hover:text-rose-300 hover:bg-rose-950/40 h-10"
+                    className="w-full justify-start gap-2 text-destructive hover:bg-destructive/10 h-10"
                     onClick={() => navigate("/")}
                   >
                     <LogOut className="h-4 w-4" />
@@ -334,22 +347,23 @@ export default function Dashboard() {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 space-y-6">
         
         {/* Banner / Title Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-gradient-to-r from-slate-950 via-slate-900 to-sky-950/40 p-6 rounded-2xl border border-slate-800 shadow-xl">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-gradient-card p-6 rounded-2xl border border-border shadow-card">
           <div>
-            <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full bg-sky-500/10 text-sky-400 border border-sky-500/20 mb-2">
+            <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full bg-accent/10 text-accent border border-accent/20 mb-2">
               <Activity className="h-3.5 w-3.5 animate-pulse" /> Real-time Maintenance Analytics
             </span>
-            <h2 className="text-2xl font-bold text-white tracking-tight">
+            <h2 className="text-2xl font-bold text-foreground tracking-tight">
               สถิติภาพรวมและการดำเนินงานซ่อมบำรุง
             </h2>
-            <p className="text-xs text-slate-400 mt-1">
+            <p className="text-xs text-muted-foreground mt-1">
               สรุปดัชนีชี้วัดประสิทธิภาพ (KPI), เวลาซ่อมเฉลี่ย (MTTR), ค่าอะไหล่ และแนวโน้มเครื่องจักรชำรุด
             </p>
           </div>
           <div className="flex items-center gap-3">
             <Button
               onClick={() => navigate("/request")}
-              className="bg-gradient-to-r from-sky-500 to-cyan-500 hover:from-sky-600 hover:to-cyan-600 text-white shadow-lg shadow-sky-500/25 gap-2 text-xs font-semibold"
+              variant="industrial"
+              className="gap-2 text-xs font-semibold"
             >
               <PlusCircle className="h-4 w-4" /> สร้างใบแจ้งซ่อมใหม่
             </Button>
@@ -360,65 +374,65 @@ export default function Dashboard() {
         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
           
           {/* Card 1: Total Requests */}
-          <Card className="bg-slate-950/70 border-slate-800 p-4 space-y-2">
-            <div className="flex items-center justify-between text-xs text-slate-400">
+          <Card className="bg-card border-border p-4 space-y-2 shadow-card">
+            <div className="flex items-center justify-between text-xs text-muted-foreground">
               <span>ใบแจ้งซ่อมทั้งหมด</span>
-              <FileText className="h-4 w-4 text-sky-400" />
+              <FileText className="h-4 w-4 text-accent" />
             </div>
-            <p className="text-2xl font-extrabold text-white">{stats.total}</p>
-            <p className="text-[11px] text-emerald-400 flex items-center gap-0.5">
+            <p className="text-2xl font-extrabold text-foreground">{stats.total}</p>
+            <p className="text-xs text-success flex items-center gap-0.5">
               <ArrowUpRight className="h-3 w-3" /> รวมทุกรายการ
             </p>
           </Card>
 
           {/* Card 2: Active / In Progress */}
-          <Card className="bg-slate-950/70 border-slate-800 p-4 space-y-2">
-            <div className="flex items-center justify-between text-xs text-slate-400">
+          <Card className="bg-card border-border p-4 space-y-2 shadow-card">
+            <div className="flex items-center justify-between text-xs text-muted-foreground">
               <span>งานกำลังดำเนินการ</span>
-              <Clock className="h-4 w-4 text-amber-400" />
+              <Clock className="h-4 w-4 text-warning" />
             </div>
-            <p className="text-2xl font-extrabold text-amber-400">{stats.active}</p>
-            <p className="text-[11px] text-slate-400">เปิด / ประเมิน / ซ่อม / รออะไหล่</p>
+            <p className="text-2xl font-extrabold text-warning">{stats.active}</p>
+            <p className="text-xs text-muted-foreground">เปิด / ประเมิน / ซ่อม / รออะไหล่</p>
           </Card>
 
           {/* Card 3: Critical Pending */}
-          <Card className="bg-slate-950/70 border-slate-800 p-4 space-y-2">
-            <div className="flex items-center justify-between text-xs text-slate-400">
+          <Card className="bg-card border-border p-4 space-y-2 shadow-card">
+            <div className="flex items-center justify-between text-xs text-muted-foreground">
               <span>วิกฤต (Critical)</span>
-              <Flame className="h-4 w-4 text-rose-500" />
+              <Flame className="h-4 w-4 text-destructive" />
             </div>
-            <p className="text-2xl font-extrabold text-rose-500">{stats.critical}</p>
-            <p className="text-[11px] text-rose-400/80">ต้องการแก้ไขเร่งด่วน</p>
+            <p className="text-2xl font-extrabold text-destructive">{stats.critical}</p>
+            <p className="text-xs text-destructive">ต้องการแก้ไขเร่งด่วน</p>
           </Card>
 
           {/* Card 4: MTTR Avg */}
-          <Card className="bg-slate-950/70 border-slate-800 p-4 space-y-2">
-            <div className="flex items-center justify-between text-xs text-slate-400">
+          <Card className="bg-card border-border p-4 space-y-2 shadow-card">
+            <div className="flex items-center justify-between text-xs text-muted-foreground">
               <span>MTTR (เวลาซ่อมเฉลี่ย)</span>
-              <Activity className="h-4 w-4 text-cyan-400" />
+              <Activity className="h-4 w-4 text-accent" />
             </div>
-            <p className="text-2xl font-extrabold text-cyan-400">{stats.mttrAvgHours} <span className="text-xs font-normal text-slate-400">ชม.</span></p>
-            <p className="text-[11px] text-slate-400">Mean Time To Repair</p>
+            <p className="text-2xl font-extrabold text-accent">{stats.mttrAvgHours} <span className="text-xs font-normal text-muted-foreground">ชม.</span></p>
+            <p className="text-xs text-muted-foreground">Mean Time To Repair</p>
           </Card>
 
           {/* Card 5: Completion Rate */}
-          <Card className="bg-slate-950/70 border-slate-800 p-4 space-y-2">
-            <div className="flex items-center justify-between text-xs text-slate-400">
+          <Card className="bg-card border-border p-4 space-y-2 shadow-card">
+            <div className="flex items-center justify-between text-xs text-muted-foreground">
               <span>อัตราซ่อมเสร็จ (%)</span>
-              <CheckCircle2 className="h-4 w-4 text-emerald-400" />
+              <CheckCircle2 className="h-4 w-4 text-success" />
             </div>
-            <p className="text-2xl font-extrabold text-emerald-400">{stats.completionRate}%</p>
-            <p className="text-[11px] text-slate-400">{stats.completed} จาก {stats.total} รายการ</p>
+            <p className="text-2xl font-extrabold text-success">{stats.completionRate}%</p>
+            <p className="text-xs text-muted-foreground">{stats.completed} จาก {stats.total} รายการ</p>
           </Card>
 
           {/* Card 6: Total Parts Cost */}
-          <Card className="bg-slate-950/70 border-slate-800 p-4 space-y-2">
-            <div className="flex items-center justify-between text-xs text-slate-400">
+          <Card className="bg-card border-border p-4 space-y-2 shadow-card">
+            <div className="flex items-center justify-between text-xs text-muted-foreground">
               <span>ค่าอะไหล่เบิกรวม</span>
-              <Package className="h-4 w-4 text-purple-400" />
+              <Package className="h-4 w-4 text-primary" />
             </div>
-            <p className="text-xl font-extrabold text-purple-300">฿{stats.totalCost.toLocaleString()}</p>
-            <p className="text-[11px] text-slate-400">จากคลัง Stock</p>
+            <p className="text-xl font-extrabold text-primary">฿{stats.totalCost.toLocaleString()}</p>
+            <p className="text-xs text-muted-foreground">จากคลัง Stock</p>
           </Card>
 
         </div>
@@ -427,21 +441,21 @@ export default function Dashboard() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           
           {/* Chart 1: Work Breakdown by Category */}
-          <Card className="bg-slate-950/70 border-slate-800 p-5 space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+          <Card className="bg-card border-border p-5 space-y-4 shadow-card">
+            <div className="flex items-center justify-between border-b border-border pb-3">
               <div>
-                <h3 className="font-bold text-sm text-slate-100 flex items-center gap-2">
-                  <BarChart3 className="h-4 w-4 text-sky-400" /> สัดส่วนงานซ่อมแยกตามประเภท (Category)
+                <h3 className="font-bold text-sm text-foreground flex items-center gap-2">
+                  <BarChart3 className="h-4 w-4 text-accent" /> สัดส่วนงานซ่อมแยกตามประเภท (Category)
                 </h3>
-                <p className="text-[11px] text-slate-400">จำนวนใบแจ้งซ่อมแบ่งตามระบบเครื่องกล/ไฟฟ้า/ลม</p>
+                <p className="text-xs text-muted-foreground">จำนวนใบแจ้งซ่อมแบ่งตามระบบเครื่องกล/ไฟฟ้า/ลม</p>
               </div>
             </div>
             <div className="h-64">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={stats.categoryData} margin={{ top: 10, right: 10, left: -20, bottom: 20 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
-                  <XAxis dataKey="name" stroke="#94a3b8" tick={{ fontSize: 11 }} angle={-15} textAnchor="end" />
-                  <YAxis stroke="#94a3b8" tick={{ fontSize: 11 }} allowDecimals={false} />
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--chart-grid))" />
+                  <XAxis dataKey="name" stroke="hsl(var(--chart-axis))" tick={{ fontSize: 11 }} angle={-15} textAnchor="end" />
+                  <YAxis stroke="hsl(var(--chart-axis))" tick={{ fontSize: 11 }} allowDecimals={false} />
                   <Tooltip content={<CustomTooltip />} />
                   <Bar dataKey="value" name="จำนวนงาน" radius={[4, 4, 0, 0]}>
                     {stats.categoryData.map((_, index) => (
@@ -452,15 +466,14 @@ export default function Dashboard() {
               </ResponsiveContainer>
             </div>
           </Card>
-
           {/* Chart 2: Status Distribution Pie Chart */}
-          <Card className="bg-slate-950/70 border-slate-800 p-5 space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+          <Card className="bg-card border-border p-5 space-y-4 shadow-card">
+            <div className="flex items-center justify-between border-b border-border pb-3">
               <div>
-                <h3 className="font-bold text-sm text-slate-100 flex items-center gap-2">
-                  <Activity className="h-4 w-4 text-cyan-400" /> สัดส่วนสถานะงานซ่อมปัจจุบัน (Status Breakdown)
+                <h3 className="font-bold text-sm text-foreground flex items-center gap-2">
+                  <Activity className="h-4 w-4 text-accent" /> สัดส่วนสถานะงานซ่อมปัจจุบัน (Status Breakdown)
                 </h3>
-                <p className="text-[11px] text-slate-400">สถานะงานในระบบตั้งแต่เปิดงานถึงเสร็จสิ้น</p>
+                <p className="text-xs text-muted-foreground">สถานะงานในระบบตั้งแต่เปิดงานถึงเสร็จสิ้น</p>
               </div>
             </div>
             <div className="h-64">
@@ -480,37 +493,37 @@ export default function Dashboard() {
                     ))}
                   </Pie>
                   <Tooltip content={<CustomTooltip />} />
-                  <Legend wrapperStyle={{ fontSize: "11px", color: "#94a3b8" }} />
+                  <Legend wrapperStyle={{ fontSize: "11px", color: "hsl(var(--muted-foreground))" }} />
                 </PieChart>
               </ResponsiveContainer>
             </div>
           </Card>
 
           {/* Chart 3: Top Breakdown Assets */}
-          <Card className="bg-slate-950/70 border-slate-800 p-5 space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+          <Card className="bg-card border-border p-5 space-y-4 shadow-card">
+            <div className="flex items-center justify-between border-b border-border pb-3">
               <div>
-                <h3 className="font-bold text-sm text-slate-100 flex items-center gap-2">
-                  <ShieldAlert className="h-4 w-4 text-rose-400" /> Top 5 เครื่องจักรที่เสียบ่อยที่สุด (Top Breakdown Assets)
+                <h3 className="font-bold text-sm text-foreground flex items-center gap-2">
+                  <ShieldAlert className="h-4 w-4 text-destructive" /> Top 5 เครื่องจักรที่เสียบ่อยที่สุด (Top Breakdown Assets)
                 </h3>
-                <p className="text-[11px] text-slate-400">เครื่องจักรที่มีสถิติแจ้งซ่อมสูงสุดเพื่อนำไปวางแผน PM</p>
+                <p className="text-xs text-muted-foreground">เครื่องจักรที่มีสถิติแจ้งซ่อมสูงสุดเพื่อนำไปวางแผน PM</p>
               </div>
             </div>
             <div className="space-y-3">
               {stats.topAssets.map((item, idx) => (
-                <div key={idx} className="flex items-center justify-between bg-slate-900/60 p-3 rounded-lg border border-slate-800 text-xs">
+                <div key={idx} className="flex items-center justify-between bg-muted/40 p-3 rounded-lg border border-border text-xs">
                   <div className="flex items-center gap-3">
-                    <div className="w-6 h-6 rounded-full bg-slate-800 text-slate-300 font-bold flex items-center justify-center text-xs">
+                    <div className="w-6 h-6 rounded-full bg-muted text-muted-foreground font-bold flex items-center justify-center text-xs">
                       #{idx + 1}
                     </div>
                     <div>
-                      <p className="font-bold text-slate-200">{item.asset}</p>
-                      <p className="text-[11px] text-slate-400">รหัสเครื่องจักรในไลน์ผลิต</p>
+                      <p className="font-bold text-foreground">{item.asset}</p>
+                      <p className="text-xs text-muted-foreground">รหัสเครื่องจักรในไลน์ผลิต</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="font-extrabold text-amber-400 text-sm">{item.count} ครั้ง</span>
-                    <Badge variant="outline" className="bg-amber-500/10 text-amber-300 border-amber-500/30 text-[10px]">
+                    <span className="font-extrabold text-warning text-sm">{item.count} ครั้ง</span>
+                    <Badge variant="outline" className="bg-warning/10 text-warning border-warning/30 text-2xs">
                       High Frequency
                     </Badge>
                   </div>
@@ -520,23 +533,23 @@ export default function Dashboard() {
           </Card>
 
           {/* Chart 4: Priority Distribution */}
-          <Card className="bg-slate-950/70 border-slate-800 p-5 space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+          <Card className="bg-card border-border p-5 space-y-4 shadow-card">
+            <div className="flex items-center justify-between border-b border-border pb-3">
               <div>
-                <h3 className="font-bold text-sm text-slate-100 flex items-center gap-2">
-                  <Flame className="h-4 w-4 text-orange-400" /> ระดับความเร่งด่วนของงานซ่อม (Priority Distribution)
+                <h3 className="font-bold text-sm text-foreground flex items-center gap-2">
+                  <Flame className="h-4 w-4 text-warning" /> ระดับความเร่งด่วนของงานซ่อม (Priority Distribution)
                 </h3>
-                <p className="text-[11px] text-slate-400">แบ่งตามระดับ Critical / High / Medium / Low</p>
+                <p className="text-xs text-muted-foreground">แบ่งตามระดับ Critical / High / Medium / Low</p>
               </div>
             </div>
             <div className="h-64">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={stats.priorityData} layout="vertical" margin={{ top: 10, right: 20, left: 10, bottom: 10 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
-                  <XAxis type="number" stroke="#94a3b8" tick={{ fontSize: 11 }} allowDecimals={false} />
-                  <YAxis dataKey="name" type="category" stroke="#94a3b8" tick={{ fontSize: 11 }} />
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--chart-grid))" />
+                  <XAxis type="number" stroke="hsl(var(--chart-axis))" tick={{ fontSize: 11 }} allowDecimals={false} />
+                  <YAxis dataKey="name" type="category" stroke="hsl(var(--chart-axis))" tick={{ fontSize: 11 }} />
                   <Tooltip content={<CustomTooltip />} />
-                  <Bar dataKey="value" name="จำนวนงาน" fill="#f97316" radius={[0, 4, 4, 0]} />
+                  <Bar dataKey="value" name="จำนวนงาน" fill="hsl(var(--chart-5))" radius={[0, 4, 4, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -545,27 +558,27 @@ export default function Dashboard() {
         </div>
 
         {/* Recent Work Orders & Instant Print Section */}
-        <Card className="bg-slate-950/70 border-slate-800 p-5 space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-3">
+        <Card className="bg-card border-border p-5 space-y-4 shadow-card">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border pb-3">
             <div>
-              <h3 className="font-bold text-sm text-slate-100 flex items-center gap-2">
-                <FileText className="h-4 w-4 text-sky-400" /> รายการใบแจ้งซ่อมล่าสุดและพิมพ์ใบสั่งซ่อม (Work Orders)
+              <h3 className="font-bold text-sm text-foreground flex items-center gap-2">
+                <FileText className="h-4 w-4 text-accent" /> รายการใบแจ้งซ่อมล่าสุดและพิมพ์ใบสั่งซ่อม (Work Orders)
               </h3>
-              <p className="text-[11px] text-slate-400">สามารถกดพิมพ์ใบสั่งซ่อม A4 หรือ Export รายชิ้นได้ทันที</p>
+              <p className="text-xs text-muted-foreground">สามารถกดพิมพ์ใบสั่งซ่อม A4 หรือ Export รายชิ้นได้ทันที</p>
             </div>
             <Button
               onClick={() => navigate("/board")}
               variant="outline"
               size="sm"
-              className="bg-slate-900 border-slate-700 text-slate-200 text-xs gap-1.5"
+              className="text-xs gap-1.5"
             >
               ดูบอร์ดช่างทั้งหมด <ArrowUpRight className="h-3.5 w-3.5" />
             </Button>
           </div>
 
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs text-slate-300">
-              <thead className="bg-slate-900 text-slate-400 font-semibold border-b border-slate-800">
+            <table className="w-full text-left text-xs text-foreground">
+              <thead className="bg-muted text-muted-foreground font-semibold border-b border-border">
                 <tr>
                   <th className="p-3">รหัสงาน</th>
                   <th className="p-3">เครื่องจักร</th>
@@ -576,29 +589,25 @@ export default function Dashboard() {
                   <th className="p-3 text-right">แอคชั่น</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-800">
+              <tbody className="divide-y divide-border">
                 {requests.slice(0, 5).map((req) => (
-                  <tr key={req.request_id} className="hover:bg-slate-900/50 transition">
-                    <td className="p-3 font-mono font-bold text-sky-400">{req.request_id}</td>
-                    <td className="p-3 font-medium text-slate-200">{req.asset_name}</td>
-                    <td className="p-3 max-w-xs truncate text-slate-400">{req.issue_summary}</td>
+                  <tr key={req.request_id} className="hover:bg-muted/50 transition">
+                    <td className="p-3 font-mono font-bold text-primary">{req.request_id}</td>
+                    <td className="p-3 font-medium text-foreground">{req.asset_name}</td>
+                    <td className="p-3 max-w-xs truncate text-muted-foreground">{req.issue_summary}</td>
                     <td className="p-3">{req.reported_by}</td>
                     <td className="p-3">
-                      <Badge variant="outline" className="text-[10px] uppercase font-bold border-rose-500/40 text-rose-300 bg-rose-950/30">
-                        {req.priority}
-                      </Badge>
+                      <PriorityBadge priority={req.priority} className="text-2xs px-1.5 py-0.5" />
                     </td>
                     <td className="p-3">
-                      <Badge variant="outline" className="text-[10px] border-sky-500/40 text-sky-300 bg-sky-950/30">
-                        {STATUS_LABEL[req.status]}
-                      </Badge>
+                      <StatusBadge status={req.status} className="text-2xs px-1.5 py-0.5" />
                     </td>
                     <td className="p-3 text-right">
                       <Button
                         onClick={() => handleOpenPrint(req)}
                         size="sm"
                         variant="secondary"
-                        className="h-7 bg-sky-900/40 hover:bg-sky-800/60 text-sky-200 text-[11px] gap-1"
+                        className="h-7 text-xs gap-1"
                       >
                         <Printer className="h-3 w-3" /> พิมพ์ A4
                       </Button>

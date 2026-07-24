@@ -170,7 +170,7 @@ const RequestForm = () => {
   const [issueDescription, setIssueDescription] = useState("");
   const [symptom, setSymptom] = useState<SymptomType>("other");
   const [frequency, setFrequency] = useState<FrequencyType>("first-time");
-  const [operability, setOperability] = useState<OperabilityType>("operable");
+  const [operability, setOperability] = useState<OperabilityType>("running");
   const [additionalNote, setAdditionalNote] = useState("");
   const [priority, setPriority] = useState<Priority | "">("");
   const [category, setCategory] = useState<WorkRequest["category"] | "">("");
@@ -268,7 +268,7 @@ const RequestForm = () => {
     setIssueDescription("");
     setSymptom("other");
     setFrequency("first-time");
-    setOperability("operable");
+    setOperability("running");
     setAdditionalNote("");
     setPriority("");
     setCategory("");
@@ -296,7 +296,7 @@ const RequestForm = () => {
     setIssueDescription("");
     setSymptom("other");
     setFrequency("first-time");
-    setOperability("operable");
+    setOperability("running");
     setAdditionalNote("");
     setPriority("");
     setCategory("");
@@ -576,11 +576,18 @@ const RequestForm = () => {
       return;
     }
 
+    const nav = navigator as Navigator & {
+      getUserMedia?: LegacyGetUserMedia;
+      webkitGetUserMedia?: LegacyGetUserMedia;
+      mozGetUserMedia?: LegacyGetUserMedia;
+      msGetUserMedia?: LegacyGetUserMedia;
+    };
+
     const legacyGetUserMedia =
-      navigator.getUserMedia ||
-      (navigator as Navigator & { webkitGetUserMedia?: LegacyGetUserMedia }).webkitGetUserMedia ||
-      (navigator as Navigator & { mozGetUserMedia?: LegacyGetUserMedia }).mozGetUserMedia ||
-      (navigator as Navigator & { msGetUserMedia?: LegacyGetUserMedia }).msGetUserMedia;
+      nav.getUserMedia ||
+      nav.webkitGetUserMedia ||
+      nav.mozGetUserMedia ||
+      nav.msGetUserMedia;
 
     const getStream = (constraints: MediaStreamConstraints) => {
       if (navigator.mediaDevices?.getUserMedia) {
@@ -1066,11 +1073,12 @@ const RequestForm = () => {
                 onChange={(v) => setFrequency(v as FrequencyType)}
               />
               <OptionGroup
-                title="เครื่องยังใช้งานได้หรือไม่"
+                title="สภาพการใช้งานของเครื่อง"
                 icon={<Factory className="h-4 w-4" />}
                 options={[
-                  { value: "operable", label: "ใช้งานได้" },
-                  { value: "inoperable", label: "ใช้งานไม่ได้" },
+                  { value: "running", label: "ยังใช้งานได้ปกติ" },
+                  { value: "degraded", label: "เริ่มเสื่อมสภาพ" },
+                  { value: "stopped", label: "หยุดทำงานแล้ว" },
                 ]}
                 value={operability}
                 onChange={(v) => setOperability(v as OperabilityType)}

@@ -77,6 +77,21 @@ export default {
           waiting: "hsl(var(--status-waiting))",
           done: "hsl(var(--status-done))",
         },
+        chart: {
+          1: "hsl(var(--chart-1))",
+          2: "hsl(var(--chart-2))",
+          3: "hsl(var(--chart-3))",
+          4: "hsl(var(--chart-4))",
+          5: "hsl(var(--chart-5))",
+          6: "hsl(var(--chart-6))",
+          7: "hsl(var(--chart-7))",
+          grid: "hsl(var(--chart-grid))",
+          axis: "hsl(var(--chart-axis))",
+        },
+      },
+      fontSize: {
+        "3xs": ["0.5625rem", { lineHeight: "0.75rem" }],
+        "2xs": ["0.625rem", { lineHeight: "0.875rem" }],
       },
       backgroundImage: {
         "gradient-primary": "var(--gradient-primary)",

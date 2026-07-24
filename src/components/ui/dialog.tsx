@@ -4,11 +4,49 @@ import { X } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
-const Dialog = DialogPrimitive.Root;
+/**
+ * Custom Dialog root that:
+ * 1. Uses modal={false} to bypass Radix's scroll-lock mechanism
+ *    (which adds padding-right compensation causing a layout gap).
+ * 2. Adds its own scroll-lock on the <html> element instead of <body>.
+ *    Because <html> has `scrollbar-gutter: stable` in index.css, the
+ *    scrollbar gutter remains reserved even when overflow is hidden,
+ *    so there is zero layout shift and zero gap.
+ */
+function Dialog({
+  open,
+  onOpenChange,
+  children,
+  ...props
+}: React.ComponentProps<typeof DialogPrimitive.Root>) {
+  React.useEffect(() => {
+    const html = document.documentElement;
+    if (open) {
+      html.style.overflowY = "hidden";
+    } else {
+      html.style.overflowY = "";
+    }
+    return () => {
+      html.style.overflowY = "";
+    };
+  }, [open]);
 
-const DialogTrigger = DialogPrimitive.Trigger;
+  return (
+    <DialogPrimitive.Root
+      modal={false}
+      open={open}
+      onOpenChange={onOpenChange}
+      {...props}
+    >
+      {children}
+    </DialogPrimitive.Root>
+  );
+}
+
 
 const DialogPortal = DialogPrimitive.Portal;
+
+const DialogTrigger = DialogPrimitive.Trigger;
 
 const DialogClose = DialogPrimitive.Close;
 
@@ -19,7 +57,7 @@ const DialogOverlay = React.forwardRef<
   <DialogPrimitive.Overlay
     ref={ref}
     className={cn(
-      "fixed inset-0 z-50 bg-black/80 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
+      "fixed inset-0 z-50 bg-black/60 backdrop-blur-sm data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
       className,
     )}
     {...props}
@@ -32,7 +70,16 @@ const DialogContent = React.forwardRef<
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content>
 >(({ className, children, ...props }, ref) => (
   <DialogPortal>
-    <DialogOverlay />
+    {/*
+     * Custom backdrop overlay — replaces <DialogOverlay /> which returns null
+     * when modal={false}. This div is rendered inside DialogPortal so it only
+     * appears while the dialog is mounted (open). It provides the blur/dim
+     * effect and forwards pointer-events so clicks land on the dialog content.
+     */}
+    <div
+      className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm animate-in fade-in-0 duration-200"
+      aria-hidden="true"
+    />
     <DialogPrimitive.Content
       ref={ref}
       className={cn(

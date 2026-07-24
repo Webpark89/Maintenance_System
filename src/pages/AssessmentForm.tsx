@@ -96,8 +96,9 @@ const ISSUE_FREQUENCY_LABEL: Record<RequestDetails["issue_frequency"], string> =
 };
 
 const MACHINE_OPERABILITY_LABEL: Record<RequestDetails["machine_operability"], string> = {
-  operable: "ยังใช้งานได้",
-  inoperable: "ใช้งานไม่ได้",
+  running: "ยังใช้งานได้ปกติ",
+  degraded: "เริ่มเสื่อมสภาพ",
+  stopped: "หยุดทำงานแล้ว",
 };
 
 const formatWorkCategory = (category: RequestDetails["job_type"]) => {
@@ -137,14 +138,14 @@ const AssessmentForm = () => {
       ? request.request_details.reported_date_from_qr
       : today,
   );
-  const [priorityLevel, setPriorityLevel] = useState<PriorityLevel>("warm");
-  const [workStatus, setWorkStatus] = useState<WorkStatus>("repairable");
+  const [priorityLevel, setPriorityLevel] = useState<PriorityLevel>("medium");
+  const [workStatus, setWorkStatus] = useState<WorkStatus>("doing");
   const [repairStartDate, setRepairStartDate] = useState(today);
   const [repairEndDate, setRepairEndDate] = useState(
     new Date(Date.now() + 86400000).toISOString().slice(0, 10),
   );
-  const [impact, setImpact] = useState<ImpactLevel>("no-impact");
-  const [machineState, setMachineState] = useState<MachineState>("temporary-operable");
+  const [impact, setImpact] = useState<ImpactLevel>("low");
+  const [machineState, setMachineState] = useState<MachineState>("running");
   const [resultText, setResultText] = useState("");
   const [temporaryMeasure, setTemporaryMeasure] = useState("");
   const [communicationLog, setCommunicationLog] = useState("");
@@ -183,21 +184,7 @@ const AssessmentForm = () => {
   const removeAssessmentPhoto = (attachmentId: string) =>
     setAssessmentPhotos((prev) => prev.filter((item) => item.attachment_id !== attachmentId));
 
-  const addPart = (partId: string) => {
-    const sp = MOCK_SPARE_PARTS.find((p) => p.part_id === partId);
-    if (!sp) return;
-    if (parts.some((p) => p.part_id === partId)) {
-      toast.info("รายการนี้มีอยู่แล้ว");
-      return;
-    }
-    setParts((prev) => [...prev, { part_id: sp.part_id, name: sp.name, quantity: 1 }]);
-  };
 
-  const updateQty = (partId: string, qty: number) =>
-    setParts((prev) => prev.map((p) => (p.part_id === partId ? { ...p, quantity: qty } : p)));
-
-  const removePart = (partId: string) =>
-    setParts((prev) => prev.filter((p) => p.part_id !== partId));
 
   const applyStatusAction = (nextStatus: Status, actionLabel: string) => {
     requestStore.setStatus(request.request_id, nextStatus, "TECH001", {
@@ -231,7 +218,7 @@ const AssessmentForm = () => {
     };
 
     requestStore.setAssessmentReport(request.request_id, report);
-    requestStore.setStatus(request.request_id, workStatus === "waiting-parts" ? "waiting" : "doing", "TECH001", {
+    requestStore.setStatus(request.request_id, workStatus === "waiting" ? "waiting" : "doing", "TECH001", {
       actorName: TECHNICIAN_NAME,
       note: "บันทึกผลการประเมินหน้างาน",
       notifyRequester: true,
@@ -641,9 +628,9 @@ function AssessmentVisitFields({
           <div className="grid grid-cols-2 gap-2">
             {[
               { value: "critical", label: "Critical" },
-              { value: "hot", label: "Hot" },
-              { value: "warm", label: "Warm" },
-              { value: "cold", label: "Cold" },
+              { value: "high", label: "High" },
+              { value: "medium", label: "Medium" },
+              { value: "low", label: "Low" },
             ].map((item) => (
               <Button
                 key={item.value}
@@ -698,10 +685,10 @@ function OnSiteAssessmentFields({
         <div className="space-y-1.5">
           <Label className="text-xs">สถานะงาน</Label>
           <div className="grid grid-cols-2 gap-2">
-            <Button type="button" variant={workStatus === "waiting-parts" ? "default" : "outline"} onClick={() => setWorkStatus("waiting-parts")}>
+            <Button type="button" variant={workStatus === "waiting" ? "default" : "outline"} onClick={() => setWorkStatus("waiting")}>
               รออะไหล่
             </Button>
-            <Button type="button" variant={workStatus === "repairable" ? "default" : "outline"} onClick={() => setWorkStatus("repairable")}>
+            <Button type="button" variant={workStatus === "doing" ? "default" : "outline"} onClick={() => setWorkStatus("doing")}>
               ดำเนินการซ่อมได้
             </Button>
           </div>
@@ -709,9 +696,9 @@ function OnSiteAssessmentFields({
         <div className="space-y-1.5">
           <Label className="text-xs">ผลกระทบระหว่างรอ</Label>
           <div className="grid grid-cols-1 gap-2">
-            <Button type="button" variant={impact === "no-impact" ? "default" : "outline"} onClick={() => setImpact("no-impact")}>ไม่กระทบการผลิต</Button>
-            <Button type="button" variant={impact === "partial-impact" ? "default" : "outline"} onClick={() => setImpact("partial-impact")}>กระทบบางส่วน</Button>
-            <Button type="button" variant={impact === "full-impact" ? "default" : "outline"} onClick={() => setImpact("full-impact")}>กระทบทั้งหมด</Button>
+            <Button type="button" variant={impact === "low" ? "default" : "outline"} onClick={() => setImpact("low")}>ไม่กระทบการผลิต</Button>
+            <Button type="button" variant={impact === "medium" ? "default" : "outline"} onClick={() => setImpact("medium")}>กระทบบางส่วน</Button>
+            <Button type="button" variant={impact === "high" ? "default" : "outline"} onClick={() => setImpact("high")}>กระทบทั้งหมด</Button>
           </div>
         </div>
       </div>
@@ -720,9 +707,9 @@ function OnSiteAssessmentFields({
         <div className="space-y-1.5">
           <Label className="text-xs">สถานะเครื่องขณะรอ</Label>
           <div className="grid grid-cols-1 gap-2">
-            <Button type="button" variant={machineState === "temporary-operable" ? "default" : "outline"} onClick={() => setMachineState("temporary-operable")}>ใช้งานได้ (ชั่วคราว)</Button>
+            <Button type="button" variant={machineState === "running" ? "default" : "outline"} onClick={() => setMachineState("running")}>ใช้งานได้ (ชั่วคราว)</Button>
+            <Button type="button" variant={machineState === "degraded" ? "default" : "outline"} onClick={() => setMachineState("degraded")}>ใช้งานแบบจำกัดเงื่อนไข</Button>
             <Button type="button" variant={machineState === "stopped" ? "default" : "outline"} onClick={() => setMachineState("stopped")}>หยุดใช้งาน</Button>
-            <Button type="button" variant={machineState === "limited-condition" ? "default" : "outline"} onClick={() => setMachineState("limited-condition")}>ใช้งานแบบจำกัดเงื่อนไข</Button>
           </div>
         </div>
         <div className="space-y-2">

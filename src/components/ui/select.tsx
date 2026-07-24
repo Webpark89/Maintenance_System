@@ -4,7 +4,11 @@ import { Check, ChevronDown, ChevronUp } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
-const Select = SelectPrimitive.Root;
+// Using modal={false} to bypass Radix's scroll-lock compensation which causes
+// a layout gap (padding-right) on the right side of the page when Select opens.
+const Select = (props: React.ComponentProps<typeof SelectPrimitive.Root>) => (
+  <SelectPrimitive.Root modal={false} {...props} />
+);
 
 const SelectGroup = SelectPrimitive.Group;
 

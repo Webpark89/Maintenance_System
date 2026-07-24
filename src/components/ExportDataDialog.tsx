@@ -90,10 +90,13 @@ export function ExportDataDialog({ open, onOpenChange, requests }: ExportDataDia
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent
+        className="sm:max-w-md"
+        onOpenAutoFocus={(e) => e.preventDefault()}
+      >
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-slate-800">
-            <FileSpreadsheet className="h-5 w-5 text-emerald-600" />
+          <DialogTitle className="flex items-center gap-2 text-foreground">
+            <FileSpreadsheet className="h-5 w-5 text-success" />
             ส่งออกข้อมูลใบแจ้งซ่อม (Export Excel / CSV)
           </DialogTitle>
         </DialogHeader>
@@ -101,29 +104,29 @@ export function ExportDataDialog({ open, onOpenChange, requests }: ExportDataDia
         <div className="space-y-4 py-3 text-sm">
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <Label className="text-xs font-semibold text-slate-600">ตั้งแต่วันที่</Label>
+              <Label className="text-xs font-semibold text-muted-foreground">ตั้งแต่วันที่</Label>
               <Input
                 type="date"
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
-                className="mt-1"
+                className="mt-1 text-xs"
               />
             </div>
             <div>
-              <Label className="text-xs font-semibold text-slate-600">ถึงวันที่</Label>
+              <Label className="text-xs font-semibold text-muted-foreground">ถึงวันที่</Label>
               <Input
                 type="date"
                 value={endDate}
                 onChange={(e) => setEndDate(e.target.value)}
-                className="mt-1"
+                className="mt-1 text-xs"
               />
             </div>
           </div>
 
           <div>
-            <Label className="text-xs font-semibold text-slate-600">กรองตามสถานะงาน</Label>
+            <Label className="text-xs font-semibold text-muted-foreground">กรองตามสถานะงาน</Label>
             <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="mt-1">
+              <SelectTrigger className="mt-1 text-xs">
                 <SelectValue placeholder="ทั้งหมด" />
               </SelectTrigger>
               <SelectContent>
@@ -139,9 +142,9 @@ export function ExportDataDialog({ open, onOpenChange, requests }: ExportDataDia
           </div>
 
           <div>
-            <Label className="text-xs font-semibold text-slate-600">กรองตามประเภทงานซ่อม</Label>
+            <Label className="text-xs font-semibold text-muted-foreground">กรองตามประเภทงานซ่อม</Label>
             <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-              <SelectTrigger className="mt-1">
+              <SelectTrigger className="mt-1 text-xs">
                 <SelectValue placeholder="ทั้งหมด" />
               </SelectTrigger>
               <SelectContent>
@@ -155,7 +158,7 @@ export function ExportDataDialog({ open, onOpenChange, requests }: ExportDataDia
             </Select>
           </div>
 
-          <div className="bg-emerald-50 border border-emerald-200 p-2.5 rounded text-xs text-emerald-800">
+          <div className="bg-success/10 border border-success/30 p-2.5 rounded text-xs text-foreground">
             💡 ไฟล์ที่ส่งออกจะเป็นรูปแบบ UTF-8 CSV รองรับการเปิดอ่านภาษาไทยใน Microsoft Excel และ Google Sheets ได้ 100%
           </div>
         </div>
@@ -164,7 +167,7 @@ export function ExportDataDialog({ open, onOpenChange, requests }: ExportDataDia
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             ยกเลิก
           </Button>
-          <Button onClick={handleExportCSV} className="bg-emerald-600 hover:bg-emerald-700 text-white gap-2">
+          <Button onClick={handleExportCSV} variant="industrial" className="gap-2">
             <Download className="h-4 w-4" /> ดาวน์โหลดไฟล์ Excel (.csv)
           </Button>
         </DialogFooter>

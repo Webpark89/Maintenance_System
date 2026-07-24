@@ -259,8 +259,8 @@ export function JobCard({
               <Button
                 type="button"
                 size="sm"
-                variant="ghost"
-                className="h-8 text-[11px] font-semibold px-2.5 gap-1.5 rounded-md border bg-amber-100 dark:bg-amber-950/40 border-amber-300 dark:border-amber-700/60 text-amber-900 dark:text-amber-200 hover:bg-amber-600 hover:text-white dark:hover:bg-amber-600 dark:hover:text-white hover:border-amber-600 transition-all shadow-xs"
+                variant="outline"
+                className="h-8 text-xs font-semibold px-2.5 gap-1.5 rounded-md border-warning/40 text-warning hover:bg-warning/10 transition-all shadow-xs"
                 onClick={(e) => {
                   e.stopPropagation();
                   onOpenStockRequisition?.(request.request_id);
@@ -273,8 +273,8 @@ export function JobCard({
               <Button
                 type="button"
                 size="sm"
-                variant="ghost"
-                className="h-8 text-[11px] font-semibold px-2.5 gap-1.5 rounded-md border bg-purple-100 dark:bg-purple-950/40 border-purple-300 dark:border-purple-700/60 text-purple-900 dark:text-purple-200 hover:bg-purple-600 hover:text-white dark:hover:bg-purple-600 dark:hover:text-white hover:border-purple-600 transition-all shadow-xs"
+                variant="outline"
+                className="h-8 text-xs font-semibold px-2.5 gap-1.5 rounded-md border-primary/40 text-primary hover:bg-primary/10 transition-all shadow-xs"
                 onClick={(e) => {
                   e.stopPropagation();
                   onOpenDualSignature?.(request.request_id);
@@ -287,8 +287,8 @@ export function JobCard({
               <Button
                 type="button"
                 size="sm"
-                variant="ghost"
-                className="h-8 text-[11px] font-semibold px-2.5 gap-1.5 rounded-md border bg-emerald-100 dark:bg-emerald-950/40 border-emerald-300 dark:border-emerald-700/60 text-emerald-900 dark:text-emerald-200 hover:bg-emerald-600 hover:text-white dark:hover:bg-emerald-600 dark:hover:text-white hover:border-emerald-600 transition-all shadow-xs"
+                variant="outline"
+                className="h-8 text-xs font-semibold px-2.5 gap-1.5 rounded-md border-success/40 text-success hover:bg-success/10 transition-all shadow-xs"
                 onClick={(e) => {
                   e.stopPropagation();
                   onOpenRecheck?.(request.request_id);
@@ -301,8 +301,8 @@ export function JobCard({
               <Button
                 type="button"
                 size="sm"
-                variant="ghost"
-                className="h-8 text-[11px] font-semibold px-2.5 gap-1.5 rounded-md border bg-sky-100 dark:bg-sky-950/40 border-sky-300 dark:border-sky-700/60 text-sky-900 dark:text-sky-200 hover:bg-sky-600 hover:text-white dark:hover:bg-sky-600 dark:hover:text-white hover:border-sky-600 transition-all shadow-xs"
+                variant="outline"
+                className="h-8 text-xs font-semibold px-2.5 gap-1.5 rounded-md border-accent/40 text-accent hover:bg-accent/10 transition-all shadow-xs"
                 onClick={(e) => {
                   e.stopPropagation();
                   onOpenPrint?.(request);

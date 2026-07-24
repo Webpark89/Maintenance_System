@@ -208,7 +208,6 @@ export function StockRequisitionDialog({ request, open, onOpenChange }: Props) {
                   <div className="space-y-1">
                     <Label className="text-xs">ชื่ออะไหล่ / อุปกรณ์</Label>
                     <Input
-                      size={1}
                       className="h-9 text-xs"
                       placeholder="เช่น ซีลยางพิเศษ 45mm"
                       value={customPartName}

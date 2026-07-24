@@ -13,6 +13,7 @@ import { DualSignatureDialog } from "@/components/DualSignatureDialog";
 import { RecheckTrackingDialog } from "@/components/RecheckTrackingDialog";
 import { WorkOrderPrintDialog } from "@/components/WorkOrderPrintDialog";
 import { ExportDataDialog } from "@/components/ExportDataDialog";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { requestStore, useRequests } from "@/lib/requestStore";
 import {
   CATEGORY_LABEL,
@@ -28,14 +29,14 @@ import { cn } from "@/lib/utils";
 
 const TECHNICIAN_NAME = "สมศักดิ์ ช่างไฟ";
 const STATUS_COLUMNS: { key: Status; title: string; accent: string }[] = [
-  { key: "open", title: "เปิดงาน", accent: "border-sky-500 " },
-  { key: "assess", title: "ประเมินงาน", accent: "border-amber-500" },
-  { key: "waiting", title: "รออะไหล่", accent: "border-rose-500" },
-  { key: "doing", title: "กำลังซ่อม", accent: "border-cyan-500" },
-  { key: "done", title: "ปิดงาน", accent: "border-orange-500" },
-  { key: "qc1", title: "รอตรวจครั้งที่ 1", accent: "border-violet-500" },
-  { key: "qc2", title: "รอตรวจครั้งที่ 2", accent: "border-fuchsia-500" },
-  { key: "complete", title: "เสร็จสิ้น", accent: "border-emerald-500" },
+  { key: "open", title: "เปิดงาน", accent: "border-status-new" },
+  { key: "assess", title: "ประเมินงาน", accent: "border-warning" },
+  { key: "waiting", title: "รออะไหล่", accent: "border-status-waiting" },
+  { key: "doing", title: "กำลังซ่อม", accent: "border-status-doing" },
+  { key: "done", title: "ปิดงาน", accent: "border-primary" },
+  { key: "qc1", title: "รอตรวจครั้งที่ 1", accent: "border-accent" },
+  { key: "qc2", title: "รอตรวจครั้งที่ 2", accent: "border-accent" },
+  { key: "complete", title: "เสร็จสิ้น", accent: "border-status-done" },
 ];
 
 const SUB_STATUS_BY_STATUS: Record<Status, SubStatus> = {
@@ -264,10 +265,11 @@ export default function TechnicianBoard() {
 
           {/* Desktop Navigation Links (Show on sm+) */}
           <div className="hidden sm:flex items-center gap-1.5">
+            <ThemeToggle className="h-8" />
             <Button
               variant="secondary"
               size="sm"
-              className="text-xs font-semibold gap-1.5 shadow-sm bg-sky-500 hover:bg-sky-600 text-white border-none px-3 h-8"
+              className="text-xs font-semibold gap-1.5 shadow-sm border-none px-3 h-8"
               onClick={() => navigate("/dashboard")}
             >
               <LayoutDashboard className="h-3.5 w-3.5" />
@@ -345,28 +347,28 @@ export default function TechnicianBoard() {
                   <div className="space-y-2 pt-2">
                     <Button
                       variant="outline"
-                      className="w-full justify-start gap-3 bg-sky-950/40 border-sky-800/80 text-sky-300 hover:bg-sky-900/60 h-11 text-sm font-semibold"
+                      className="w-full justify-start gap-3 h-11 text-sm font-semibold"
                       onClick={() => navigate("/dashboard")}
                     >
-                      <LayoutDashboard className="h-4 w-4 text-sky-400" />
+                      <LayoutDashboard className="h-4 w-4 text-accent" />
                       Dashboard สถิติภาพรวม
                     </Button>
 
                     <Button
                       variant="outline"
-                      className="w-full justify-start gap-3 bg-emerald-950/40 border-emerald-800/80 text-emerald-300 hover:bg-emerald-900/60 h-11 text-sm font-semibold"
+                      className="w-full justify-start gap-3 h-11 text-sm font-semibold text-success border-success/40"
                       onClick={() => setIsExportOpen(true)}
                     >
-                      <FileSpreadsheet className="h-4 w-4 text-emerald-400" />
+                      <FileSpreadsheet className="h-4 w-4 text-success" />
                       Export Data (Excel / CSV)
                     </Button>
 
                     <Button
                       variant="outline"
-                      className="w-full justify-start gap-3 bg-slate-900 border-slate-800 text-slate-200 hover:bg-slate-800 h-11 text-sm font-semibold"
+                      className="w-full justify-start gap-3 h-11 text-sm font-semibold"
                       onClick={() => navigate("/assets")}
                     >
-                      <QrCode className="h-4 w-4 text-amber-400" />
+                      <QrCode className="h-4 w-4 text-warning" />
                       จัดการทรัพย์สิน & QR Tag
                     </Button>
 

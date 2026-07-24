@@ -41,6 +41,7 @@ import {
   Zap,
 } from "lucide-react";
 import { toast } from "sonner";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 export default function AssetManagement() {
   const navigate = useNavigate();
@@ -152,21 +153,10 @@ export default function AssetManagement() {
     window.print();
   };
 
-  const handleDownloadQrImage = (asset: AssetMachine) => {
-    const link = document.createElement("a");
-    link.href = getQrDataUrl(asset.asset_id);
-    link.target = "_blank";
-    link.download = `QR-${asset.asset_id}.png`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    toast.success("ดาวน์โหลด QR Code เรียบร้อย");
-  };
-
   return (
     <div className="min-h-screen bg-background pb-16">
       {/* Header */}
-      <header className="sticky top-0 z-20 bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white shadow-lg">
+      <header className="sticky top-0 z-20 bg-gradient-hero text-white shadow-lg">
         <div className="container py-3 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Button
@@ -179,18 +169,20 @@ export default function AssetManagement() {
             </Button>
             <div>
               <h1 className="text-lg font-bold flex items-center gap-2">
-                <QrCode className="h-5 w-5 text-indigo-400" />
+                <QrCode className="h-5 w-5 text-secondary" />
                 ระบบจัดการและพิมพ์ QR Code ทรัพย์สิน (Asset Management)
               </h1>
-              <p className="text-xs text-slate-300">
+              <p className="text-xs text-slate-200">
                 จัดการ Master Data เครื่องจักร สร้าง QR Badge พิมพ์ติดเครื่อง และกำหนดเงื่อนไขพื้นที่
               </p>
             </div>
           </div>
           <div className="flex items-center gap-2">
+            <ThemeToggle className="h-9" />
             <Button
               onClick={handleOpenAddForm}
-              className="bg-indigo-600 hover:bg-indigo-500 text-white gap-1.5 shadow"
+              variant="industrial"
+              className="gap-1.5 shadow"
             >
               <Plus className="h-4 w-4" />
               ลงทะเบียนเครื่องจักรใหม่
@@ -200,61 +192,53 @@ export default function AssetManagement() {
       </header>
 
       {/* Main Content */}
-      <div className="container py-6 space-y-6">
-        {/* Filter Bar */}
-        <Card className="p-4 shadow-sm">
-          <div className="grid md:grid-cols-4 gap-3">
-            <div className="md:col-span-2 relative">
-              <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="ค้นหารหัสทรัพย์สิน, ชื่อเครื่อง, เลขเครื่อง, อาคาร..."
-                className="pl-9"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-            </div>
-            <div>
+      <div className="container pt-6 space-y-6">
+        {/* Filters & Actions */}
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-card p-4 rounded-xl border border-border shadow-card">
+          <div className="relative w-full sm:w-80">
+            <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="ค้นหาชื่อ, รหัส, โซน, เลขเครื่อง..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9 text-xs"
+            />
+          </div>
+
+          <div className="flex items-center gap-3 w-full sm:w-auto">
+            <div className="flex items-center gap-2">
+              <SlidersHorizontal className="h-4 w-4 text-muted-foreground shrink-0" />
               <Select value={selectedZone} onValueChange={setSelectedZone}>
-                <SelectTrigger>
-                  <SelectValue placeholder="เลือกโซน/พื้นที่" />
+                <SelectTrigger className="w-[140px] text-xs">
+                  <SelectValue placeholder="โซนทั้งหมด" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">ทุกโซนพื้นที่</SelectItem>
+                  <SelectItem value="all" className="text-xs">ทุกโซนพื้นที่</SelectItem>
                   {uniqueZones.map((zone) => (
-                    <SelectItem key={zone} value={zone}>
+                    <SelectItem key={zone} value={zone} className="text-xs">
                       {zone}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
-            <div>
-              <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-                <SelectTrigger>
-                  <SelectValue placeholder="ประเภทงานซ่อม" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">ทุกประเภทงาน</SelectItem>
-                  <SelectItem value="mechanical">เครื่องกล</SelectItem>
-                  <SelectItem value="electrical-control">ไฟฟ้า/ควบคุม</SelectItem>
-                  <SelectItem value="pneumatic-hydraulic">ระบบลม/ไฮดรอลิก</SelectItem>
-                  <SelectItem value="other">อื่น ๆ</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+
+            <Badge variant="secondary" className="text-xs py-1.5 shrink-0">
+              รวม {filteredAssets.length} รายการ
+            </Badge>
           </div>
-        </Card>
+        </div>
 
         {/* Asset Cards Grid */}
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredAssets.map((asset) => {
             const qrUrl = getQrDataUrl(asset.asset_id);
             return (
-              <Card key={asset.asset_id} className="p-4 flex flex-col justify-between hover:shadow-md transition-shadow relative overflow-hidden group">
+              <Card key={asset.asset_id} className="p-4 flex flex-col justify-between hover:shadow-elevated transition-shadow relative overflow-hidden group shadow-card">
                 <div className="space-y-3">
-                  <div className="flex items-start justify-between gap-2 border-b pb-2">
+                  <div className="flex items-start justify-between gap-2 border-b border-border pb-2">
                     <div>
-                      <span className="text-xs font-mono font-bold px-2 py-0.5 rounded bg-indigo-100 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300">
+                      <span className="text-xs font-mono font-bold px-2 py-0.5 rounded bg-primary/10 text-primary border border-primary/20">
                         {asset.asset_id}
                       </span>
                       <h3 className="font-bold text-sm text-foreground mt-1 line-clamp-1">
@@ -264,37 +248,37 @@ export default function AssetManagement() {
                         {asset.asset_type} ({asset.machine_number})
                       </p>
                     </div>
-                    <Badge variant={asset.status === "active" ? "default" : "outline"} className={asset.status === "active" ? "bg-emerald-600" : ""}>
+                    <Badge variant={asset.status === "active" ? "default" : "outline"} className={asset.status === "active" ? "bg-success text-success-foreground" : ""}>
                       {asset.status === "active" ? "ใช้งานปกติ" : "ซ่อมบำรุง"}
                     </Badge>
                   </div>
 
                   <div className="grid grid-cols-2 gap-2 text-xs">
                     <div className="space-y-1">
-                      <span className="text-muted-foreground text-[11px] flex items-center gap-1">
-                        <MapPin className="h-3 w-3 text-indigo-500" /> โซน / อาคาร:
+                      <span className="text-muted-foreground text-2xs flex items-center gap-1">
+                        <MapPin className="h-3 w-3 text-accent" /> โซน / อาคาร:
                       </span>
                       <p className="font-medium">{asset.machine_zone} - {asset.location_building}</p>
                     </div>
                     <div className="space-y-1">
-                      <span className="text-muted-foreground text-[11px] flex items-center gap-1">
-                        <Layers className="h-3 w-3 text-indigo-500" /> ชั้น / สายผลิต:
+                      <span className="text-muted-foreground text-2xs flex items-center gap-1">
+                        <Layers className="h-3 w-3 text-accent" /> ชั้น / สายผลิต:
                       </span>
                       <p className="font-medium">{asset.location_floor} {asset.location_line}</p>
                     </div>
                   </div>
 
-                  <div className="p-2 rounded bg-muted/40 text-[11px] space-y-1">
+                  <div className="p-2 rounded bg-muted/40 text-2xs space-y-1">
                     <div className="flex items-center justify-between">
                       <span className="text-muted-foreground flex items-center gap-1">
-                        <Clock className="h-3 w-3 text-slate-500" /> ช่วงเวลาเข้าพื้นที่:
+                        <Clock className="h-3 w-3 text-muted-foreground" /> ช่วงเวลาเข้าพื้นที่:
                       </span>
-                      <span className="font-semibold text-slate-700 dark:text-slate-200">
+                      <span className="font-semibold text-foreground">
                         {asset.access_time_window}
                       </span>
                     </div>
                     {asset.access_required && (
-                      <div className="text-amber-600 dark:text-amber-400 font-medium">
+                      <div className="text-warning font-medium">
                         ⚠️ ต้องยื่นขออนุมัติก่อนเข้าพื้นที่
                       </div>
                     )}
@@ -302,11 +286,11 @@ export default function AssetManagement() {
                 </div>
 
                 {/* Actions */}
-                <div className="pt-3 mt-3 border-t flex items-center justify-between gap-2">
+                <div className="pt-3 mt-3 border-t border-border flex items-center justify-between gap-2">
                   <Button
                     size="sm"
                     variant="outline"
-                    className="gap-1.5 text-xs text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800 cursor-pointer hover:text-blue-600 dark:hover:text-indigo-950 hover:bg-indigo-50 dark:hover:bg-indigo-950"
+                    className="gap-1.5 text-xs text-primary border-primary/30 cursor-pointer hover:bg-primary/10"
                     onClick={() => setQrModalAsset(asset)}
                   >
                     <QrCode className="h-3.5 w-3.5" />
@@ -534,7 +518,8 @@ export default function AssetManagement() {
               </Button>
               <Button
                 size="sm"
-                className="gap-1 text-xs bg-indigo-600 hover:bg-indigo-500 text-white"
+                variant="industrial"
+                className="gap-1 text-xs"
                 onClick={handlePrintQrBadge}
               >
                 <Printer className="h-3.5 w-3.5" />
