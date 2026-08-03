@@ -8,6 +8,7 @@ import { Card } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { PriorityBadge } from "@/components/PriorityBadge";
 import { StatusBadge } from "@/components/StatusBadge";
+import { AppLayout } from "@/components/AppLayout";
 import {
   Priority,
   RequestAttachment,
@@ -680,60 +681,21 @@ const RequestForm = () => {
   }, []);
 
   return (
-    <div className="min-h-screen bg-background pb-16 ">
-      {/* Top bar */}
-      <header className="sticky top-0 z-20 bg-gradient-primary text-primary-foreground shadow-md">
-        <div className="w-full px-4 sm:px-6 lg:px-8 py-3 flex items-center gap-3">
-          <div className="h-9 w-9 rounded-md bg-secondary grid place-items-center shrink-0">
-            <ClipboardList className="h-5 w-5 text-secondary-foreground" />
-          </div>
-          <div className="min-w-0 flex-1">
-            <div className="text-xs uppercase tracking-wider text-primary-foreground/70">
-              Requester · แจ้งซ่อม
-            </div>
-            <h1 className="font-bold truncate">{currentUserName} · {currentUserId}</h1>
-          </div>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="text-primary-foreground hover:bg-white/10 relative"
-            onClick={() => navigate("/notifications")}
-            aria-label="ศูนย์แจ้งเตือน"
-          >
-            <Bell className="h-5 w-5" />
-            {unreadCount > 0 && (
-              <span className="absolute -top-0.5 -right-0.5 min-w-4 h-4 rounded-full bg-secondary text-secondary-foreground text-[10px] leading-4 text-center px-1">
-                {Math.min(unreadCount, 99)}
-              </span>
-            )}
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="text-primary-foreground hover:bg-white/10 relative"
-            onClick={() => setHistoryOpen((prev) => !prev)}
-            aria-label="ดูประวัติรายการที่ฉันแจ้ง"
-          >
-            <History className="h-5 w-5" />
-            {myRequests.length > 0 && (
-              <span className="absolute -top-0.5 -right-0.5 min-w-4 h-4 rounded-full bg-secondary text-secondary-foreground text-[10px] leading-4 text-center px-1">
-                {Math.min(myRequests.length, 99)}
-              </span>
-            )}
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="text-primary-foreground hover:bg-white/10"
-            onClick={() => navigate("/")}
-            aria-label="ออกจากระบบ"
-          >
-            <LogOut className="h-5 w-5" />
-          </Button>
-        </div>
-      </header>
-
-      <main className="w-full px-4 sm:px-6 lg:px-8 pt-6 grid  gap-0">
+    <AppLayout
+      title="แบบฟอร์มแจ้งซ่อม"
+      subtitle={`${currentUserName} · ${currentUserId}`}
+      actions={
+        <Button
+          variant="outline"
+          size="sm"
+          className="text-xs px-3 h-8 gap-1.5 border-border"
+          onClick={() => setHistoryOpen((prev) => !prev)}
+        >
+          <History className="h-3.5 w-3.5" /> ประวัติแจ้งซ่อม ({myRequests.length})
+        </Button>
+      }
+    >
+      <div className="space-y-6">
         {/* Form */}
         <Card className="p-5 sm:p-6 bg-gradient-card shadow-card animate-slide-up">
           <header className="flex items-center gap-2 mb-5 pb-4 border-b">
@@ -1218,9 +1180,8 @@ const RequestForm = () => {
             </div>
           </form>
         </Card>
-      </main>
 
-      {/* Mobile Sticky Action Footer */}
+        {/* Mobile Sticky Action Footer */}
       <div className="fixed bottom-0 left-0 right-0 p-3 bg-background/95 backdrop-blur border-t border-border shadow-lg sm:hidden z-30 flex items-center gap-2">
         <Button type="button" variant="outline" size="sm" onClick={reset} className="px-3">
           ล้าง
@@ -1361,6 +1322,7 @@ const RequestForm = () => {
         </DialogContent>
       </Dialog>
     </div>
+  </AppLayout>
   );
 };
 

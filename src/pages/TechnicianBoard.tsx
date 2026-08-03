@@ -14,6 +14,7 @@ import { RecheckTrackingDialog } from "@/components/RecheckTrackingDialog";
 import { WorkOrderPrintDialog } from "@/components/WorkOrderPrintDialog";
 import { ExportDataDialog } from "@/components/ExportDataDialog";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { AppLayout } from "@/components/AppLayout";
 import { requestStore, useRequests } from "@/lib/requestStore";
 import {
   CATEGORY_LABEL,
@@ -250,157 +251,21 @@ export default function TechnicianBoard() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      <header className="sticky top-0 z-20 bg-gradient-primary text-primary-foreground shadow-md">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2.5 min-w-0">
-            <div className="h-9 w-9 rounded-md bg-secondary grid place-items-center shrink-0">
-              <Wrench className="h-5 w-5 text-secondary-foreground" />
-            </div>
-            <div className="min-w-0">
-              <div className="text-[10px] uppercase tracking-wider text-primary-foreground/70 font-semibold">Technician Board</div>
-              <h1 className="font-bold text-sm sm:text-base truncate">สมศักดิ์ ช่างไฟ · TECH001</h1>
-            </div>
-          </div>
-
-          {/* Desktop Navigation Links (Show on sm+) */}
-          <div className="hidden sm:flex items-center gap-1.5">
-            <ThemeToggle className="h-8" />
-            <Button
-              variant="secondary"
-              size="sm"
-              className="text-xs font-semibold gap-1.5 shadow-sm border-none px-3 h-8"
-              onClick={() => navigate("/dashboard")}
-            >
-              <LayoutDashboard className="h-3.5 w-3.5" />
-              <span>Dashboard สถิติ</span>
-            </Button>
-
-            <Button
-              variant="secondary"
-              size="sm"
-              className="text-xs font-semibold gap-1.5 shadow-sm bg-emerald-600 hover:bg-emerald-700 text-white border-none px-3 h-8"
-              onClick={() => setIsExportOpen(true)}
-            >
-              <FileSpreadsheet className="h-3.5 w-3.5" />
-              <span>Export Excel</span>
-            </Button>
-
-            <Button
-              variant="secondary"
-              size="sm"
-              className="text-xs font-semibold gap-1.5 shadow-sm px-3 h-8"
-              onClick={() => navigate("/assets")}
-            >
-              <QrCode className="h-3.5 w-3.5" />
-              <span>ทรัพย์สิน & QR Tag</span>
-            </Button>
-
-            <Button
-              variant="ghost"
-              size="icon"
-              className="text-primary-foreground hover:bg-white/10 relative h-8 w-8"
-              onClick={() => navigate("/notifications")}
-            >
-              <Bell className="h-4 w-4" />
-              {counts.critical > 0 && <span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-priority-critical priority-pulse" />}
-            </Button>
-
-            <Button variant="ghost" size="icon" className="text-primary-foreground hover:bg-white/10 h-8 w-8" onClick={() => navigate("/")} aria-label="ออกจากระบบ">
-              <LogOut className="h-4 w-4" />
-            </Button>
-          </div>
-
-          {/* Mobile Hamburger Menu (Show on mobile) */}
-          <div className="flex items-center gap-2 sm:hidden">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="text-primary-foreground hover:bg-white/10 relative h-8 w-8"
-              onClick={() => navigate("/notifications")}
-            >
-              <Bell className="h-4 w-4" />
-              {counts.critical > 0 && <span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-priority-critical priority-pulse" />}
-            </Button>
-
-            <Sheet>
-              <SheetTrigger asChild>
-                <Button variant="ghost" size="icon" className="text-white hover:bg-white/10 h-9 w-9">
-                  <Menu className="h-6 w-6" />
-                </Button>
-              </SheetTrigger>
-              <SheetContent side="right" className="bg-slate-950 text-slate-100 border-slate-800 p-6 flex flex-col justify-between">
-                <div className="space-y-6">
-                  <SheetHeader className="text-left border-b border-slate-800 pb-4">
-                    <div className="flex items-center gap-2.5">
-                      <div className="h-8 w-8 rounded-md bg-sky-500 text-white font-bold grid place-items-center">
-                        M
-                      </div>
-                      <div>
-                        <SheetTitle className="text-white text-base font-bold">FixFlow Maintenance</SheetTitle>
-                        <SheetDescription className="text-xs text-slate-400">สมศักดิ์ ช่างไฟ · TECH001</SheetDescription>
-                      </div>
-                    </div>
-                  </SheetHeader>
-
-                  {/* Menu Items */}
-                  <div className="space-y-2 pt-2">
-                    <Button
-                      variant="outline"
-                      className="w-full justify-start gap-3 h-11 text-sm font-semibold"
-                      onClick={() => navigate("/dashboard")}
-                    >
-                      <LayoutDashboard className="h-4 w-4 text-accent" />
-                      Dashboard สถิติภาพรวม
-                    </Button>
-
-                    <Button
-                      variant="outline"
-                      className="w-full justify-start gap-3 h-11 text-sm font-semibold text-success border-success/40"
-                      onClick={() => setIsExportOpen(true)}
-                    >
-                      <FileSpreadsheet className="h-4 w-4 text-success" />
-                      Export Data (Excel / CSV)
-                    </Button>
-
-                    <Button
-                      variant="outline"
-                      className="w-full justify-start gap-3 h-11 text-sm font-semibold"
-                      onClick={() => navigate("/assets")}
-                    >
-                      <QrCode className="h-4 w-4 text-warning" />
-                      จัดการทรัพย์สิน & QR Tag
-                    </Button>
-
-                    <Button
-                      variant="outline"
-                      className="w-full justify-start gap-3 bg-slate-900 border-slate-800 text-slate-200 hover:bg-slate-800 h-11 text-sm font-semibold"
-                      onClick={() => navigate("/notifications")}
-                    >
-                      <Bell className="h-4 w-4 text-violet-400" />
-                      ศูนย์แจ้งเตือน
-                    </Button>
-                  </div>
-                </div>
-
-                <div className="border-t border-slate-800 pt-4">
-                  <Button
-                    variant="ghost"
-                    className="w-full justify-start gap-2 text-rose-400 hover:text-rose-300 hover:bg-rose-950/40 h-10"
-                    onClick={() => navigate("/")}
-                  >
-                    <LogOut className="h-4 w-4" />
-                    ออกจากระบบ
-                  </Button>
-                </div>
-              </SheetContent>
-            </Sheet>
-          </div>
-        </div>
-      </header>
-
-      {/* Main Content Area (Matches Navbar Container Width) */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 space-y-4">
+    <AppLayout
+      title="TECHNICIAN BOARD"
+      subtitle="สมศักดิ์ ช่างไฟ · TECH001"
+      actions={
+        <Button
+          variant="outline"
+          size="sm"
+          className="text-xs px-3 h-8 gap-1.5 border-emerald-600/30 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-600/10 hover:text-emerald-700 dark:hover:text-emerald-300"
+          onClick={() => setIsExportOpen(true)}
+        >
+          <FileSpreadsheet className="h-3.5 w-3.5" /> Export Excel
+        </Button>
+      }
+    >
+      <div className="space-y-4">
         {/* Desktop Filter Toolbar (Show on sm+) */}
         <div className="hidden sm:flex flex-wrap items-center gap-1.5 lg:gap-2 w-full">
           <div className="relative flex-1 min-w-[140px] sm:min-w-[180px]">
@@ -496,8 +361,8 @@ export default function TechnicianBoard() {
 
           <Sheet>
             <SheetTrigger asChild>
-              <Button variant="outline" size="sm" className="h-10 px-3 bg-card gap-1.5 shrink-0 relative shadow-sm border-primary/20">
-                <Filter className="h-4 w-4 text-primary" />
+              <Button variant="outline" size="sm" className="h-10 px-3 bg-card gap-1.5 shrink-0 relative shadow-sm border-primary/20 hover:bg-muted hover:text-foreground">
+                <Filter className="h-4 w-4" />
                 <span className="text-xs font-semibold">ตัวกรอง</span>
                 {activeFilterCount > 0 && (
                   <span className="ml-0.5 px-1.5 py-0.2 rounded-full bg-primary text-primary-foreground text-[10px] font-bold">
@@ -743,7 +608,7 @@ export default function TechnicianBoard() {
           onOpenChange={setIsExportOpen}
         />
       </div>
-    </div>
+    </AppLayout>
   );
 }
 

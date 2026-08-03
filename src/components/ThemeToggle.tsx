@@ -14,7 +14,7 @@ export function ThemeToggle({ className }: Props) {
       variant="outline"
       size="sm"
       onClick={toggleTheme}
-      className={`gap-1.5 text-xs transition-colors border-border bg-card text-foreground hover:bg-muted ${className || ""}`}
+      className={`gap-1.5 text-xs transition-colors border-border bg-card text-foreground hover:bg-muted hover:text-foreground ${className || ""}`}
       title={theme === "dark" ? "เปลี่ยนเป็นโหมดสว่าง (Light Mode)" : "เปลี่ยนเป็นโหมดมืด (Dark Mode)"}
     >
       {theme === "dark" ? (

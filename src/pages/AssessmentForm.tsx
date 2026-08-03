@@ -13,6 +13,7 @@ import {
 import { requestStore, useRequest, useRequests } from "@/lib/requestStore";
 import { StockRequisitionDialog } from "@/components/StockRequisitionDialog";
 import { DualSignatureDialog } from "@/components/DualSignatureDialog";
+import { AppLayout } from "@/components/AppLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -243,23 +244,13 @@ const AssessmentForm = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background pb-36">
-      <header className="sticky top-0 z-20 bg-gradient-primary text-primary-foreground shadow-md">
-        <div className="container py-3 flex items-center gap-3">
-          <Button variant="ghost" size="icon" className="text-primary-foreground hover:bg-white/10" onClick={() => navigate("/board")}>
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-          <div className="min-w-0 flex-1">
-            <div className="text-xs uppercase tracking-wider text-primary-foreground/70 font-mono">
-              {request.request_id}
-            </div>
-            <h1 className="font-bold truncate">ประเมินหน้างานและบันทึกผล</h1>
-          </div>
-          <PriorityBadge priority={request.priority} />
-        </div>
-      </header>
-
-      <main className="container pt-6 grid lg:grid-cols-[380px_1fr] gap-6">
+    <AppLayout
+      title="ประเมินหน้างานและบันทึกผล"
+      subtitle={`รหัสใบแจ้งซ่อม: ${request.request_id}`}
+      backUrl="/board"
+      actions={<PriorityBadge priority={request.priority} />}
+    >
+      <div className="grid lg:grid-cols-[380px_1fr] gap-6 pb-24">
         <aside className="lg:sticky lg:top-24 lg:self-start space-y-4">
           <Card className="p-5 bg-gradient-card shadow-card space-y-4">
             <div className="flex items-center gap-2 mb-4">
@@ -479,7 +470,7 @@ const AssessmentForm = () => {
             </SectionCard>
           </div>
         </section>
-      </main>
+      </div>
 
       <div className="fixed bottom-0 inset-x-0 bg-card/95 backdrop-blur border-t border-border shadow-elevated z-30">
         <div className="container py-3 flex flex-wrap items-center gap-3">
@@ -515,7 +506,7 @@ const AssessmentForm = () => {
         open={isDualSigOpen}
         onOpenChange={setIsDualSigOpen}
       />
-    </div>
+    </AppLayout>
   );
 };
 

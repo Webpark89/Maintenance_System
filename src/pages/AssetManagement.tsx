@@ -42,10 +42,13 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { AppLayout } from "@/components/AppLayout";
+import { getCurrentUser } from "@/lib/auth";
 
 export default function AssetManagement() {
   const navigate = useNavigate();
   const assets = useAssets();
+  const isSupervisor = getCurrentUser()?.role === "supervisor";
 
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedZone, setSelectedZone] = useState<string>("all");
@@ -149,50 +152,49 @@ export default function AssetManagement() {
     return `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${qrText}&format=png`;
   };
 
+  const handleDownloadQrImage = async (asset: AssetMachine | null) => {
+    if (!asset) return;
+    try {
+      const qrUrl = getQrDataUrl(asset.asset_id);
+      const response = await fetch(qrUrl);
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `QR-${asset.asset_id}.png`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      toast.success("ดาวน์โหลด QR Code เรียบร้อยแล้ว");
+    } catch (error) {
+      console.error("Failed to download QR image:", error);
+      toast.error("ไม่สามารถดาวน์โหลดรูปภาพ QR Code ได้");
+    }
+  };
+
   const handlePrintQrBadge = () => {
     window.print();
   };
 
   return (
-    <div className="min-h-screen bg-background pb-16">
-      {/* Header */}
-      <header className="sticky top-0 z-20 bg-gradient-hero text-white shadow-lg">
-        <div className="container py-3 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="text-white hover:bg-white/10"
-              onClick={() => navigate("/board")}
-            >
-              <ArrowLeft className="h-5 w-5" />
-            </Button>
-            <div>
-              <h1 className="text-lg font-bold flex items-center gap-2">
-                <QrCode className="h-5 w-5 text-secondary" />
-                ระบบจัดการและพิมพ์ QR Code ทรัพย์สิน (Asset Management)
-              </h1>
-              <p className="text-xs text-slate-200">
-                จัดการ Master Data เครื่องจักร สร้าง QR Badge พิมพ์ติดเครื่อง และกำหนดเงื่อนไขพื้นที่
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <ThemeToggle className="h-9" />
-            <Button
-              onClick={handleOpenAddForm}
-              variant="industrial"
-              className="gap-1.5 shadow"
-            >
-              <Plus className="h-4 w-4" />
-              ลงทะเบียนเครื่องจักรใหม่
-            </Button>
-          </div>
-        </div>
-      </header>
-
-      {/* Main Content */}
-      <div className="container pt-6 space-y-6">
+    <AppLayout
+      title="จัดการทรัพย์สิน & QR CODE"
+      subtitle="จัดการและพิมพ์ QR Code เครื่องจักร"
+      actions={
+        isSupervisor ? (
+          <Button
+            onClick={handleOpenAddForm}
+            size="sm"
+            className="gap-1.5 h-8 text-xs font-semibold bg-primary text-primary-foreground hover:bg-primary/90"
+          >
+            <Plus className="h-3.5 w-3.5" />
+            ลงทะเบียนเครื่องจักรใหม่
+          </Button>
+        ) : null
+      }
+    >
+      <div className="space-y-6">
         {/* Filters & Actions */}
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-card p-4 rounded-xl border border-border shadow-card">
           <div className="relative w-full sm:w-80">
@@ -290,21 +292,23 @@ export default function AssetManagement() {
                   <Button
                     size="sm"
                     variant="outline"
-                    className="gap-1.5 text-xs text-primary border-primary/30 cursor-pointer hover:bg-primary/10"
+                    className="gap-1.5 text-xs text-primary border-primary/30 cursor-pointer hover:bg-primary/10 hover:text-primary"
                     onClick={() => setQrModalAsset(asset)}
                   >
                     <QrCode className="h-3.5 w-3.5" />
                     ดู / พิมพ์ QR Code Tag
                   </Button>
 
-                  <div className="flex items-center gap-1">
-                    <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => handleOpenEditForm(asset)}>
-                      <Wrench className="h-3.5 w-3.5" />
-                    </Button>
-                    <Button size="icon" variant="ghost" className="h-8 w-8 text-rose-500 hover:text-rose-600 hover:bg-rose-50" onClick={() => handleDeleteAsset(asset.asset_id)}>
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </Button>
-                  </div>
+                  {isSupervisor && (
+                    <div className="flex items-center gap-1">
+                      <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => handleOpenEditForm(asset)}>
+                        <Wrench className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button size="icon" variant="ghost" className="h-8 w-8 text-rose-500 hover:text-rose-600 hover:bg-rose-50" onClick={() => handleDeleteAsset(asset.asset_id)}>
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  )}
                 </div>
               </Card>
             );
@@ -529,6 +533,6 @@ export default function AssetManagement() {
           </DialogContent>
         </Dialog>
       )}
-    </div>
+    </AppLayout>
   );
 }

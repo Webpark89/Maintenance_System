@@ -7,7 +7,7 @@ import { WorkOrderPrintDialog } from "@/components/WorkOrderPrintDialog";
 import { ExportDataDialog } from "@/components/ExportDataDialog";
 import { PriorityBadge } from "@/components/PriorityBadge";
 import { StatusBadge } from "@/components/StatusBadge";
-import { ThemeToggle } from "@/components/ThemeToggle";
+import { AppLayout } from "@/components/AppLayout";
 import { requestStore, useRequests } from "@/lib/requestStore";
 import { CATEGORY_LABEL, STATUS_LABEL, PRIORITY_LABEL, WorkRequest } from "@/lib/mockData";
 import {
@@ -171,180 +171,21 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="min-h-screen bg-background text-foreground font-sans pb-12">
-      {/* Top Navbar */}
-      <header className="sticky top-0 z-40 bg-card/90 backdrop-blur border-b border-border">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2.5 min-w-0">
-            <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg bg-gradient-primary flex items-center justify-center font-bold text-primary-foreground shadow-sm shrink-0">
-              M
-            </div>
-            <div className="min-w-0">
-              <h1 className="font-bold text-sm sm:text-base text-foreground tracking-tight leading-tight truncate">
-                Dashboard <span className="hidden sm:inline">Executive Maintenance</span>
-              </h1>
-              <p className="text-2xs sm:text-xs text-muted-foreground truncate hidden sm:block">ระบบบริหารจัดการและสรุปผลสถิติงานซ่อมบำรุง</p>
-            </div>
-          </div>
-
-          {/* Desktop Navigation Links (Show on md+) */}
-          <nav className="hidden md:flex items-center gap-1 bg-muted/60 p-1 rounded-lg border border-border text-xs">
-            <NavLink
-              to="/dashboard"
-              className="px-3 py-1.5 rounded-md font-medium text-muted-foreground hover:text-foreground transition"
-              activeClassName="bg-primary text-primary-foreground shadow-xs font-semibold"
-            >
-              <LayoutDashboard className="h-3.5 w-3.5 inline mr-1.5" /> Dashboard
-            </NavLink>
-            <NavLink
-              to="/board"
-              className="px-3 py-1.5 rounded-md font-medium text-muted-foreground hover:text-foreground transition"
-              activeClassName="bg-primary text-primary-foreground shadow-xs font-semibold"
-            >
-              <Wrench className="h-3.5 w-3.5 inline mr-1.5" /> บอร์ดงานซ่อม
-            </NavLink>
-            <NavLink
-              to="/request"
-              className="px-3 py-1.5 rounded-md font-medium text-muted-foreground hover:text-foreground transition"
-              activeClassName="bg-primary text-primary-foreground shadow-xs font-semibold"
-            >
-              <PlusCircle className="h-3.5 w-3.5 inline mr-1.5" /> แจ้งซ่อมใหม่
-            </NavLink>
-            <NavLink
-              to="/assets"
-              className="px-3 py-1.5 rounded-md font-medium text-muted-foreground hover:text-foreground transition"
-              activeClassName="bg-primary text-primary-foreground shadow-xs font-semibold"
-            >
-              <Building className="h-3.5 w-3.5 inline mr-1.5" /> ทรัพย์สิน & QR
-            </NavLink>
-            <NavLink
-              to="/notifications"
-              className="px-3 py-1.5 rounded-md font-medium text-muted-foreground hover:text-foreground transition"
-              activeClassName="bg-primary text-primary-foreground shadow-xs font-semibold"
-            >
-              <Bell className="h-3.5 w-3.5 inline mr-1.5" /> แจ้งเตือน
-            </NavLink>
-          </nav>
-
-          {/* Desktop Actions (Show on md+) */}
-          <div className="hidden md:flex items-center gap-2 shrink-0">
-            <ThemeToggle className="h-8" />
-            <Button
-              onClick={() => setIsExportDialogOpen(true)}
-              variant="outline"
-              size="sm"
-              className="text-xs px-3 h-8 gap-1.5 border-success/40 text-success hover:bg-success/10"
-            >
-              <FileSpreadsheet className="h-3.5 w-3.5 text-success" /> Export Excel
-            </Button>
-            <Button
-              onClick={() => navigate("/")}
-              variant="ghost"
-              size="sm"
-              className="text-muted-foreground hover:text-foreground text-xs gap-1 px-2 h-8"
-            >
-              <LogOut className="h-3.5 w-3.5" /> ออก
-            </Button>
-          </div>
-
-          {/* Mobile Hamburger Menu (Show on mobile) */}
-          <div className="flex items-center gap-2 md:hidden">
-            <ThemeToggle className="h-8 px-2 text-xs" />
-            <Sheet>
-              <SheetTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-9 w-9">
-                  <Menu className="h-6 w-6" />
-                </Button>
-              </SheetTrigger>
-              <SheetContent side="right" className="bg-card text-card-foreground border-border p-6 flex flex-col justify-between">
-                <div className="space-y-6">
-                  <SheetHeader className="text-left border-b border-border pb-4">
-                    <div className="flex items-center gap-2.5">
-                      <div className="h-8 w-8 rounded-md bg-primary text-primary-foreground font-bold grid place-items-center">
-                        M
-                      </div>
-                      <div>
-                        <SheetTitle className="text-foreground text-base font-bold">FixFlow Dashboard</SheetTitle>
-                        <SheetDescription className="text-xs text-muted-foreground">ระบบบริหารจัดการและสรุปสถิติ</SheetDescription>
-                      </div>
-                    </div>
-                  </SheetHeader>
-
-                  <div className="space-y-2 pt-2">
-                    <Button
-                      variant="outline"
-                      className="w-full justify-start gap-3 h-11 text-sm font-semibold"
-                      onClick={() => navigate("/dashboard")}
-                    >
-                      <LayoutDashboard className="h-4 w-4 text-accent" />
-                      Dashboard สถิติภาพรวม
-                    </Button>
-
-                    <Button
-                      variant="outline"
-                      className="w-full justify-start gap-3 h-11 text-sm font-semibold text-success border-success/40"
-                      onClick={() => setIsExportDialogOpen(true)}
-                    >
-                      <FileSpreadsheet className="h-4 w-4 text-success" />
-                      Export Data (Excel / CSV)
-                    </Button>
-
-                    <Button
-                      variant="outline"
-                      className="w-full justify-start gap-3 h-11 text-sm font-semibold"
-                      onClick={() => navigate("/board")}
-                    >
-                      <Wrench className="h-4 w-4 text-accent" />
-                      บอร์ดจัดการงานซ่อม
-                    </Button>
-
-                    <Button
-                      variant="outline"
-                      className="w-full justify-start gap-3 h-11 text-sm font-semibold"
-                      onClick={() => navigate("/request")}
-                    >
-                      <PlusCircle className="h-4 w-4 text-success" />
-                      สร้างใบแจ้งซ่อมใหม่
-                    </Button>
-
-                    <Button
-                      variant="outline"
-                      className="w-full justify-start gap-3 h-11 text-sm font-semibold"
-                      onClick={() => navigate("/assets")}
-                    >
-                      <Building className="h-4 w-4 text-warning" />
-                      ทรัพย์สิน & QR Tag
-                    </Button>
-
-                    <Button
-                      variant="outline"
-                      className="w-full justify-start gap-3 h-11 text-sm font-semibold"
-                      onClick={() => navigate("/notifications")}
-                    >
-                      <Bell className="h-4 w-4 text-primary" />
-                      ศูนย์แจ้งเตือน
-                    </Button>
-                  </div>
-                </div>
-
-                <div className="border-t border-border pt-4">
-                  <Button
-                    variant="ghost"
-                    className="w-full justify-start gap-2 text-destructive hover:bg-destructive/10 h-10"
-                    onClick={() => navigate("/")}
-                  >
-                    <LogOut className="h-4 w-4" />
-                    ออกจากระบบ
-                  </Button>
-                </div>
-              </SheetContent>
-            </Sheet>
-          </div>
-        </div>
-      </header>
-
-      {/* Main Content Area (Matches Navbar Container Width) */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 space-y-6">
+    <AppLayout
+      title="DASHBOARD EXECUTIVE"
+      subtitle="ระบบบริหารจัดการและสรุปผลสถิติงานซ่อมบำรุง"
+      actions={
+        <Button
+          onClick={() => setIsExportDialogOpen(true)}
+          variant="outline"
+          size="sm"
+          className="text-xs px-3 h-8 gap-1.5 border-emerald-600/30 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-600/10 hover:text-emerald-700 dark:hover:text-emerald-300"
+        >
+          <FileSpreadsheet className="h-3.5 w-3.5" /> Export Excel
+        </Button>
+      }
+    >
+      <div className="space-y-6">
         
         {/* Banner / Title Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-gradient-card p-6 rounded-2xl border border-border shadow-card">
@@ -619,7 +460,7 @@ export default function Dashboard() {
           </div>
         </Card>
 
-      </main>
+      </div>
 
       {/* Dialogs */}
       <WorkOrderPrintDialog
@@ -632,6 +473,6 @@ export default function Dashboard() {
         onOpenChange={setIsExportDialogOpen}
         requests={requests}
       />
-    </div>
+    </AppLayout>
   );
 }

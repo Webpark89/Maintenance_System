@@ -69,13 +69,13 @@
 
     --transition-smooth: cubic-bezier(0.4, 0, 0.2, 1);
 
-    --sidebar-background: 225 6% 13%;
-    --sidebar-foreground: 210 9% 87%;
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 223 7% 21%;
     --sidebar-primary: 235 86% 65%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 225 7% 24%;
-    --sidebar-accent-foreground: 210 11% 95%;
-    --sidebar-border: 225 6% 26%;
+    --sidebar-accent: 240 14% 96%;
+    --sidebar-accent-foreground: 223 7% 21%;
+    --sidebar-border: 210 9% 87%;
     --sidebar-ring: 235 86% 65%;
 
     /* Chart palette */
@@ -126,6 +126,15 @@
     --chart-7: 145 65% 49%;
     --chart-grid: 225 6% 26%;
     --chart-axis: 216 8% 73%;
+
+    --sidebar-background: 225 7% 15%;
+    --sidebar-foreground: 210 9% 87%;
+    --sidebar-primary: 235 86% 65%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 225 7% 24%;
+    --sidebar-accent-foreground: 210 11% 95%;
+    --sidebar-border: 225 6% 26%;
+    --sidebar-ring: 235 86% 65%;
   }
 }
 

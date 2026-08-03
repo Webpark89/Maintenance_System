@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { StatusBadge } from "@/components/StatusBadge";
+import { AppLayout } from "@/components/AppLayout";
 import { requestStore, useRequests } from "@/lib/requestStore";
 import { timeAgo } from "@/lib/mockData";
 import { ArrowLeft, Bell, CheckCheck, CircleDot, LogOut } from "lucide-react";
@@ -79,35 +80,11 @@ const NotificationCenter = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background pb-10">
-      <header className="sticky top-0 z-20 bg-gradient-primary text-primary-foreground shadow-md">
-        <div className="container py-3 flex items-center gap-3">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="text-primary-foreground hover:bg-white/10"
-            onClick={() => navigate("/request")}
-            aria-label="กลับ"
-          >
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-          <div className="min-w-0 flex-1">
-            <div className="text-xs uppercase tracking-wider text-primary-foreground/70">Requester · Notifications</div>
-            <h1 className="font-bold truncate">Notification Center</h1>
-          </div>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="text-primary-foreground hover:bg-white/10"
-            onClick={() => navigate("/")}
-            aria-label="ออกจากระบบ"
-          >
-            <LogOut className="h-5 w-5" />
-          </Button>
-        </div>
-      </header>
-
-      <main className="container pt-6 space-y-4">
+    <AppLayout
+      title="ศูนย์แจ้งเตือน (NOTIFICATION CENTER)"
+      subtitle="ติดตามสถานะเมื่อช่างรับงานหรืออัปเดตงานซ่อม"
+    >
+      <div className="space-y-4">
         <Card className="p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center gap-3 sm:justify-between">
           <div>
             <h2 className="font-semibold">การแจ้งเตือนของฉัน</h2>
@@ -171,8 +148,8 @@ const NotificationCenter = () => {
         {unreadCount > 0 && (
           <div className="text-xs text-muted-foreground text-right">คงเหลือยังไม่อ่าน {unreadCount} รายการ</div>
         )}
-      </main>
-    </div>
+      </div>
+    </AppLayout>
   );
 };
 
