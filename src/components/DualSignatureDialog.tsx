@@ -8,7 +8,8 @@ import { Badge } from "@/components/ui/badge";
 import { DualApprovalData, SignatureEntry, WorkRequest } from "@/lib/mockData";
 import { requestStore } from "@/lib/requestStore";
 import { calculateRepairDuration } from "@/lib/holidayUtils";
-import { FileCheck2, PenTool, CheckCircle, ShieldCheck, UserCheck, RefreshCw, Sparkles, CalendarDays, Clock3 } from "lucide-react";
+import { getCurrentUser } from "@/lib/auth";
+import { FileCheck2, PenTool, CheckCircle, ShieldCheck, UserCheck, RefreshCw, Sparkles, CalendarDays, Clock3, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 
 interface Props {
@@ -18,12 +19,15 @@ interface Props {
 }
 
 export function DualSignatureDialog({ request, open, onOpenChange }: Props) {
+  const currentUser = getCurrentUser();
+  const isSupervisor = currentUser?.role === "supervisor";
+
   const approval: DualApprovalData = request.dual_approval ?? { status: "pending" };
 
   const [activeSlot, setActiveSlot] = useState<"approver1" | "approver2">("approver1");
-  const [name, setName] = useState(activeSlot === "approver1" ? "สมศักดิ์ (หัวหน้าซ่อมบำรุง)" : "นภดล (หัวหน้าฝ่ายผลิต)");
-  const [department, setDepartment] = useState(activeSlot === "approver1" ? "แผนกซ่อมบำรุง" : "แผนกการผลิต");
-  const [role, setRole] = useState(activeSlot === "approver1" ? "หัวหน้าแผนกซ่อมบำรุง" : "หัวหน้าแผนกหน้างาน");
+  const [name, setName] = useState(activeSlot === "approver1" ? "สมศักดิ์ (หัวหน้าซ่อมบำรุง)" : "สุรชัย (หัวหน้างานซ่อมบำรุง 2)");
+  const [department, setDepartment] = useState("แผนกซ่อมบำรุง");
+  const [role, setRole] = useState("หัวหน้าแผนกซ่อมบำรุง / Supervisor");
   const [note, setNote] = useState("");
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -92,6 +96,10 @@ export function DualSignatureDialog({ request, open, onOpenChange }: Props) {
 
   const handleSignSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!isSupervisor) {
+      toast.error("ปฏิเสธการทำรายการ: เฉพาะหัวหน้าช่าง (Supervisor) เท่านั้นที่สามารถลงนามอนุมัติงานซ่อมได้ (ต้องใช้หัวหน้าช่าง 2 คนในการอนุมัติ)");
+      return;
+    }
     if (!name.trim()) {
       toast.error("กรุณาระบุชื่อผู้อนุมัติ");
       return;
@@ -127,15 +135,47 @@ export function DualSignatureDialog({ request, open, onOpenChange }: Props) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <div className="flex items-center justify-between gap-2">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto p-4 sm:p-6" onOpenAutoFocus={(e) => e.preventDefault()}>
+        <DialogHeader className="border-b pb-3">
+          {/* Mobile, Tablet & iPad Layout (< 1024px) */}
+          <div className="flex lg:hidden flex-col items-center text-center space-y-1.5">
+            <div className="p-2 rounded-lg bg-primary/10 text-primary w-fit mx-auto">
+              <FileCheck2 className="h-5 w-5" />
+            </div>
+            <DialogTitle className="text-base sm:text-lg font-bold text-foreground [text-wrap:balance]">
+              อนุมัติตรวจรับงานซ่อม (Dual Signatures QC)
+            </DialogTitle>
+            <DialogDescription className="text-xs text-muted-foreground max-w-xs sm:max-w-md mx-auto leading-relaxed [text-wrap:balance]">
+              ต้องได้รับการลงนามอนุมัติรวม 2 ท่าน<br className="hidden sm:inline" /> ตามระเบียบความปลอดภัยก่อนปิดงาน
+            </DialogDescription>
+            <Badge
+              variant={approvedCount === 2 ? "default" : "outline"}
+              className={
+                approvedCount === 2
+                  ? "bg-emerald-600 text-white font-bold mt-1 text-xs px-3 py-1 mx-auto w-fit"
+                  : approvedCount === 1
+                  ? "bg-amber-500 text-white font-semibold mt-1 text-xs px-3 py-1 mx-auto w-fit"
+                  : "border-amber-500 text-amber-600 bg-amber-50 dark:bg-amber-950/30 mt-1 text-xs px-3 py-1 mx-auto w-fit"
+              }
+            >
+              {approvedCount === 2
+                ? "อนุมัติสมบูรณ์ (2/2)"
+                : approvedCount === 1
+                ? "อนุมัติแล้ว 1 ท่าน (1/2)"
+                : "รออนุมัติ (0/2)"}
+            </Badge>
+          </div>
+
+          {/* Desktop & Laptop Layout (>= 1024px) */}
+          <div className="hidden lg:flex items-center justify-between gap-2">
             <div className="flex items-center gap-2">
-              <div className="p-2 rounded-lg bg-primary/10 text-primary">
+              <div className="p-2 rounded-lg bg-primary/10 text-primary shrink-0">
                 <FileCheck2 className="h-5 w-5" />
               </div>
               <div>
-                <DialogTitle className="text-lg font-bold">อนุมัติตรวจรับงานซ่อม (Dual Signatures QC)</DialogTitle>
+                <DialogTitle className="text-lg font-bold">
+                  อนุมัติตรวจรับงานซ่อม (Dual Signatures QC)
+                </DialogTitle>
                 <DialogDescription className="text-xs">
                   ต้องได้รับการลงนามอนุมัติรวม 2 ท่าน ตามระเบียบความปลอดภัยก่อนปิดงาน
                 </DialogDescription>
@@ -145,10 +185,10 @@ export function DualSignatureDialog({ request, open, onOpenChange }: Props) {
               variant={approvedCount === 2 ? "default" : "outline"}
               className={
                 approvedCount === 2
-                  ? "bg-emerald-600 text-white font-bold"
+                  ? "bg-emerald-600 text-white font-bold shrink-0 text-xs px-2.5 py-1"
                   : approvedCount === 1
-                  ? "bg-amber-500 text-white"
-                  : "border-amber-500 text-amber-600"
+                  ? "bg-amber-500 text-white font-semibold shrink-0 text-xs px-2.5 py-1"
+                  : "border-amber-500 text-amber-600 bg-amber-50 dark:bg-amber-950/30 shrink-0 text-xs px-2.5 py-1"
               }
             >
               {approvedCount === 2
@@ -168,17 +208,17 @@ export function DualSignatureDialog({ request, open, onOpenChange }: Props) {
           const duration = calculateRepairDuration(startDate, endDate);
 
           return (
-            <div className="p-3 bg-gradient-to-r from-sky-50 to-indigo-50 dark:from-sky-950/40 dark:to-indigo-950/40 border border-sky-200 dark:border-sky-800 rounded-lg space-y-1.5 text-xs">
-              <div className="flex items-center justify-between font-bold text-sky-900 dark:text-sky-200">
+            <div className="p-3 bg-gradient-to-r from-sky-50 to-indigo-50 dark:from-sky-950/40 dark:to-indigo-950/40 border border-sky-200 dark:border-sky-800 rounded-lg space-y-2 text-xs">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 font-bold text-sky-900 dark:text-sky-200">
                 <span className="flex items-center gap-1.5">
-                  <Clock3 className="h-4 w-4 text-sky-600" />
-                  สรุปเวลาการซ่อมบำรุงจริง (Working Days Comparison)
+                  <Clock3 className="h-4 w-4 text-sky-600 shrink-0" />
+                  <span>สรุปเวลาการซ่อมบำรุงจริง (Working Days Comparison)</span>
                 </span>
-                <Badge variant="outline" className="bg-white dark:bg-slate-900 text-sky-700 dark:text-sky-300 font-medium">
+                <Badge variant="outline" className="bg-white dark:bg-slate-900 text-sky-700 dark:text-sky-300 font-medium w-fit">
                   {duration.workingDays} วันทำงานจริง ({duration.totalCalendarDays} วันตามปฏิทิน)
                 </Badge>
               </div>
-              <div className="grid grid-cols-3 gap-2 pt-1 border-t border-sky-200/60 text-[11px]">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-2 border-t border-sky-200/60 text-[11px]">
                 <div>
                   <span className="text-muted-foreground block">ช่วงเวลาดำเนินการ:</span>
                   <span className="font-medium">{startDate} ถึง {endDate}</span>
@@ -201,7 +241,7 @@ export function DualSignatureDialog({ request, open, onOpenChange }: Props) {
         })()}
 
         {/* Status Tracker Banner */}
-        <div className="grid grid-cols-2 gap-3 p-3 bg-muted/40 rounded-lg border">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3 bg-muted/40 rounded-lg border">
           {/* Approver 1 Status */}
           <Card
             onClick={() => {
@@ -211,18 +251,18 @@ export function DualSignatureDialog({ request, open, onOpenChange }: Props) {
               setRole("หัวหน้าแผนกซ่อมบำรุง");
             }}
             className={`p-3 cursor-pointer transition-all ${
-              activeSlot === "approver1" ? "ring-2 ring-primary bg-card" : "bg-card/60 opacity-90"
+              activeSlot === "approver1" ? "ring-2 ring-primary bg-card shadow-sm" : "bg-card/60 opacity-90 hover:opacity-100"
             }`}
           >
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-primary flex items-center gap-1">
-                <UserCheck className="h-3.5 w-3.5" />
-                ท่านที่ 1: หัวหน้าแผนกซ่อมบำรุง
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-xs font-bold text-primary flex items-center gap-1.5 min-w-0 truncate">
+                <UserCheck className="h-4 w-4 shrink-0" />
+                <span className="truncate">ท่านที่ 1: หัวหน้าแผนกซ่อมบำรุง</span>
               </span>
               {approval.approver1 ? (
-                <Badge className="bg-emerald-600 text-[10px]">อนุมัติแล้ว</Badge>
+                <Badge className="bg-emerald-600 text-[10px] shrink-0">อนุมัติแล้ว</Badge>
               ) : (
-                <Badge variant="outline" className="text-[10px] text-amber-600">รอดำเนินการ</Badge>
+                <Badge variant="outline" className="text-[10px] text-amber-600 shrink-0">รอดำเนินการ</Badge>
               )}
             </div>
             {approval.approver1 ? (
@@ -230,7 +270,7 @@ export function DualSignatureDialog({ request, open, onOpenChange }: Props) {
                 <div className="font-semibold text-foreground">{approval.approver1.signer_name}</div>
                 <div className="text-[10px] text-muted-foreground">{approval.approver1.signer_role} ({approval.approver1.signer_department})</div>
                 {approval.approver1.signature_data_url && (
-                  <img src={approval.approver1.signature_data_url} alt="ลายเซ็น 1" className="h-9 mt-1 border rounded bg-white" />
+                  <img src={approval.approver1.signature_data_url} alt="ลายเซ็น 1" className="h-9 mt-1 border rounded bg-white p-0.5 object-contain" />
                 )}
               </div>
             ) : (
@@ -247,18 +287,18 @@ export function DualSignatureDialog({ request, open, onOpenChange }: Props) {
               setRole("หัวหน้าแผนกหน้างาน");
             }}
             className={`p-3 cursor-pointer transition-all ${
-              activeSlot === "approver2" ? "ring-2 ring-primary bg-card" : "bg-card/60 opacity-90"
+              activeSlot === "approver2" ? "ring-2 ring-primary bg-card shadow-sm" : "bg-card/60 opacity-90 hover:opacity-100"
             }`}
           >
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-primary flex items-center gap-1">
-                <ShieldCheck className="h-3.5 w-3.5" />
-                ท่านที่ 2: หัวหน้าแผนกหน้างาน/ผู้จัดการ
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-xs font-bold text-primary flex items-center gap-1.5 min-w-0 truncate">
+                <ShieldCheck className="h-4 w-4 shrink-0" />
+                <span className="truncate">ท่านที่ 2: หัวหน้าแผนกหน้างาน/ผู้จัดการ</span>
               </span>
               {approval.approver2 ? (
-                <Badge className="bg-emerald-600 text-[10px]">อนุมัติแล้ว</Badge>
+                <Badge className="bg-emerald-600 text-[10px] shrink-0">อนุมัติแล้ว</Badge>
               ) : (
-                <Badge variant="outline" className="text-[10px] text-amber-600">รอดำเนินการ</Badge>
+                <Badge variant="outline" className="text-[10px] text-amber-600 shrink-0">รอดำเนินการ</Badge>
               )}
             </div>
             {approval.approver2 ? (
@@ -266,7 +306,7 @@ export function DualSignatureDialog({ request, open, onOpenChange }: Props) {
                 <div className="font-semibold text-foreground">{approval.approver2.signer_name}</div>
                 <div className="text-[10px] text-muted-foreground">{approval.approver2.signer_role} ({approval.approver2.signer_department})</div>
                 {approval.approver2.signature_data_url && (
-                  <img src={approval.approver2.signature_data_url} alt="ลายเซ็น 2" className="h-9 mt-1 border rounded bg-white" />
+                  <img src={approval.approver2.signature_data_url} alt="ลายเซ็น 2" className="h-9 mt-1 border rounded bg-white p-0.5 object-contain" />
                 )}
               </div>
             ) : (
@@ -275,63 +315,74 @@ export function DualSignatureDialog({ request, open, onOpenChange }: Props) {
           </Card>
         </div>
 
+        {/* Supervisor Guard Banner */}
+        {!isSupervisor && (
+          <div className="p-3 bg-amber-500/15 border border-amber-500/30 text-amber-900 dark:text-amber-200 rounded-lg flex items-start gap-2.5 text-xs font-medium">
+            <AlertTriangle className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400 mt-0.5" />
+            <div>
+              <div className="font-bold text-amber-900 dark:text-amber-100">สงวนสิทธิ์เฉพาะหัวหน้าช่าง (Supervisor)</div>
+              <div>การลงนามอนุมัติตรวจรับงานซ่อมต้องทำโดยหัวหน้าช่างจำนวน 2 ท่าน ช่างซ่อมบำรุงทั่วไปสามารถเข้าดูสถานะได้แต่ไม่สามารถลงนามอนุมัติงานได้เอง</div>
+            </div>
+          </div>
+        )}
+
         {/* Signature Input Form */}
         <form onSubmit={handleSignSubmit} className="space-y-4 pt-2 border-t">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
             <div className="text-xs font-bold text-primary flex items-center gap-1.5">
-              <PenTool className="h-4 w-4" />
-              ฟอร์มลงนามอนุมัติ: <span className="underline">{activeSlot === "approver1" ? "ท่านที่ 1 (หัวหน้าซ่อมบำรุง)" : "ท่านที่ 2 (หัวหน้าหน้างาน)"}</span>
+              <PenTool className="h-4 w-4 shrink-0" />
+              <span>ฟอร์มลงนามอนุมัติ: <span className="underline">{activeSlot === "approver1" ? "ท่านที่ 1 (หัวหน้าซ่อมบำรุง)" : "ท่านที่ 2 (หัวหน้างานซ่อมบำรุง 2)"}</span></span>
             </div>
-            <div className="flex items-center gap-1.5">
-              <Button type="button" size="sm" variant="ghost" className="h-7 text-[11px] gap-1" onClick={handleSimulateSignature}>
+            <div className="flex items-center gap-1.5 self-end sm:self-auto">
+              <Button type="button" size="sm" variant="ghost" className="h-7 text-[11px] gap-1 px-2" onClick={handleSimulateSignature} disabled={!isSupervisor}>
                 <Sparkles className="h-3 w-3 text-amber-500" />
-                จำลองลายเซ็น
+                <span>จำลองลายเซ็น</span>
               </Button>
-              <Button type="button" size="sm" variant="ghost" className="h-7 text-[11px] gap-1" onClick={clearCanvas}>
+              <Button type="button" size="sm" variant="ghost" className="h-7 text-[11px] gap-1 px-2" onClick={clearCanvas} disabled={!isSupervisor}>
                 <RefreshCw className="h-3 w-3" />
-                ล้าง Canvas
+                <span>ล้าง Canvas</span>
               </Button>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div className="space-y-1">
               <Label className="text-xs">ชื่อ-นามสกุล ผู้อนุมัติ</Label>
-              <Input className="h-9 text-xs" value={name} onChange={(e) => setName(e.target.value)} required />
+              <Input className="h-9 text-xs" value={name} onChange={(e) => setName(e.target.value)} required disabled={!isSupervisor} />
             </div>
             <div className="space-y-1">
               <Label className="text-xs">ตำแหน่ง</Label>
-              <Input className="h-9 text-xs" value={role} onChange={(e) => setRole(e.target.value)} required />
+              <Input className="h-9 text-xs" value={role} onChange={(e) => setRole(e.target.value)} required disabled={!isSupervisor} />
             </div>
             <div className="space-y-1">
               <Label className="text-xs">หน่วยงาน / แผนก</Label>
-              <Input className="h-9 text-xs" value={department} onChange={(e) => setDepartment(e.target.value)} required />
+              <Input className="h-9 text-xs" value={department} onChange={(e) => setDepartment(e.target.value)} required disabled={!isSupervisor} />
             </div>
           </div>
 
           {/* Signature Canvas Box */}
           <div className="space-y-1">
-            <Label className="text-xs flex items-center justify-between">
-              <span>พื้นที่จรดปากกาลงลายเซ็น (Digital Signature Canvas)</span>
+            <Label className="text-xs flex flex-wrap items-center justify-between gap-1">
+              <span className="font-semibold">พื้นที่จรดปากกาลงลายเซ็น (Digital Signature Canvas)</span>
               <span className="text-[10px] text-muted-foreground">ใช้เมาส์หรือนิ้วสัมผัสเซ็นชื่อได้</span>
             </Label>
-            <div className="border-2 border-dashed rounded-lg bg-white p-1 text-center relative overflow-hidden">
+            <div className={`border-2 border-dashed rounded-lg bg-white p-1 text-center relative overflow-hidden ${!isSupervisor ? "opacity-60 pointer-events-none" : ""}`}>
               <canvas
                 ref={canvasRef}
                 width={500}
                 height={120}
-                onMouseDown={startDrawing}
-                onMouseMove={draw}
-                onMouseUp={stopDrawing}
-                onMouseLeave={stopDrawing}
-                onTouchStart={startDrawing}
-                onTouchMove={draw}
-                onTouchEnd={stopDrawing}
+                onMouseDown={isSupervisor ? startDrawing : undefined}
+                onMouseMove={isSupervisor ? draw : undefined}
+                onMouseUp={isSupervisor ? stopDrawing : undefined}
+                onMouseLeave={isSupervisor ? stopDrawing : undefined}
+                onTouchStart={isSupervisor ? startDrawing : undefined}
+                onTouchMove={isSupervisor ? draw : undefined}
+                onTouchEnd={isSupervisor ? stopDrawing : undefined}
                 className="w-full h-28 cursor-crosshair touch-none"
               />
               {!hasDrawn && (
                 <div className="absolute inset-0 pointer-events-none flex items-center justify-center text-xs text-muted-foreground/50">
-                  เซ็นชื่อลงในกรอบนี้...
+                  {isSupervisor ? "เซ็นชื่อลงในกรอบนี้..." : "เฉพาะหัวหน้าช่าง (Supervisor) เท่านั้นที่สามารถเซ็นชื่อได้"}
                 </div>
               )}
             </div>
@@ -339,16 +390,16 @@ export function DualSignatureDialog({ request, open, onOpenChange }: Props) {
 
           <div className="space-y-1">
             <Label className="text-xs">ความเห็นเพิ่มเติม (ถ้ามี)</Label>
-            <Input className="h-9 text-xs" placeholder="เช่น ซ่อมบำรุงเรียบร้อย ทดสอบรันเครื่องปกติ" value={note} onChange={(e) => setNote(e.target.value)} />
+            <Input className="h-9 text-xs" placeholder="เช่น ซ่อมบำรุงเรียบร้อย ทดสอบรันเครื่องปกติ" value={note} onChange={(e) => setNote(e.target.value)} disabled={!isSupervisor} />
           </div>
 
           <div className="flex items-center justify-between pt-2">
             <Button type="button" variant="outline" size="sm" className="h-9 text-xs" onClick={() => onOpenChange(false)}>
               ปิดหน้าต่าง
             </Button>
-            <Button type="submit" size="sm" variant="industrial" className="h-9 text-xs gap-1.5">
+            <Button type="submit" size="sm" variant={isSupervisor ? "industrial" : "outline"} className="h-9 text-xs gap-1.5" disabled={!isSupervisor}>
               <CheckCircle className="h-4 w-4" />
-              บันทึกการอนุมัติ{activeSlot === "approver1" ? "ท่านที่ 1" : "ท่านที่ 2"}
+              {isSupervisor ? `บันทึกการอนุมัติ${activeSlot === "approver1" ? "ท่านที่ 1" : "ท่านที่ 2"}` : "ต้องใช้สิทธิ์ Supervisor"}
             </Button>
           </div>
         </form>

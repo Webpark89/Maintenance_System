@@ -77,21 +77,40 @@ export function RecheckTrackingDialog({ request, open, onOpenChange }: Props) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <div className="flex items-center justify-between gap-2">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto" onOpenAutoFocus={(e) => e.preventDefault()}>
+        <DialogHeader className="border-b pb-3">
+          {/* Mobile, Tablet & iPad Layout (< 1024px) */}
+          <div className="flex lg:hidden flex-col items-center text-center space-y-1.5">
+            <div className="p-2 rounded-lg bg-primary/10 text-primary w-fit mx-auto">
+              <CalendarCheck2 className="h-5 w-5" />
+            </div>
+            <DialogTitle className="text-base sm:text-lg font-bold text-foreground [text-wrap:balance]">
+              ระบบติดตามการเข้าตรวจซ้ำ 2 สัปดาห์ (Re-check Tracker)
+            </DialogTitle>
+            <DialogDescription className="text-xs text-muted-foreground max-w-xs sm:max-w-md mx-auto leading-relaxed [text-wrap:balance]">
+              ตรวจสอบคุณภาพหลังซ่อมบำรุงตามกำหนด 2 สัปดาห์ (สัปดาห์ละ 1 ครั้ง)
+            </DialogDescription>
+            <Badge variant="outline" className="border-primary text-primary font-bold w-fit mx-auto mt-1 text-xs px-3 py-1">
+              เสร็จสิ้นเมื่อ: {new Date(recheck.completed_at).toLocaleDateString("th-TH")}
+            </Badge>
+          </div>
+
+          {/* Desktop & Laptop Layout (>= 1024px) */}
+          <div className="hidden lg:flex items-center justify-between gap-2">
             <div className="flex items-center gap-2">
-              <div className="p-2 rounded-lg bg-primary/10 text-primary">
+              <div className="p-2 rounded-lg bg-primary/10 text-primary shrink-0">
                 <CalendarCheck2 className="h-5 w-5" />
               </div>
               <div>
-                <DialogTitle className="text-lg font-bold">ระบบติดตามการเข้าตรวจซ้ำ 2 สัปดาห์ (Re-check Tracker)</DialogTitle>
+                <DialogTitle className="text-lg font-bold">
+                  ระบบติดตามการเข้าตรวจซ้ำ 2 สัปดาห์ (Re-check Tracker)
+                </DialogTitle>
                 <DialogDescription className="text-xs">
                   ตรวจสอบคุณภาพหลังซ่อมบำรุงตามกำหนด 2 สัปดาห์ (สัปดาห์ละ 1 ครั้ง)
                 </DialogDescription>
               </div>
             </div>
-            <Badge variant="outline" className="border-primary text-primary font-bold">
+            <Badge variant="outline" className="border-primary text-primary font-bold shrink-0">
               เสร็จสิ้นเมื่อ: {new Date(recheck.completed_at).toLocaleDateString("th-TH")}
             </Badge>
           </div>

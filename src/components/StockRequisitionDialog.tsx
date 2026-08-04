@@ -131,17 +131,38 @@ export function StockRequisitionDialog({ request, open, onOpenChange }: Props) {
   };
 
   const handleApproveHighCost = () => {
+    if (!isSupervisor) {
+      toast.error("ปฏิเสธการอนุมัติ: เฉพาะ Supervisor เท่านั้นที่มีสิทธิ์อนุมัติการเบิกอะไหล่มูลค่าสูง");
+      return;
+    }
     requestStore.approveRequisition(request.request_id, user?.name || "Supervisor", true);
     toast.success("อนุมัติการเบิกอะไหล่มูลค่าสูงเรียบร้อยแล้ว");
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <div className="flex items-center justify-between gap-2">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto" onOpenAutoFocus={(e) => e.preventDefault()}>
+        <DialogHeader className="border-b pb-3">
+          {/* Mobile, Tablet & iPad Layout (< 1024px) */}
+          <div className="flex lg:hidden flex-col items-center text-center space-y-1.5">
+            <div className="p-2 rounded-lg bg-primary/10 text-primary w-fit mx-auto">
+              <ShoppingCart className="h-5 w-5" />
+            </div>
+            <DialogTitle className="text-base sm:text-lg font-bold text-foreground [text-wrap:balance]">
+              ระบบเบิกอะไหล่ & คลังสินค้า (Stock Requisition)
+            </DialogTitle>
+            <DialogDescription className="text-xs text-muted-foreground leading-relaxed [text-wrap:balance]">
+              ใบแจ้งซ่อม: <span className="font-semibold text-primary">{request.request_id}</span> ({request.asset_name})
+            </DialogDescription>
+            <Badge variant={stock.parts_ready ? "default" : "outline"} className={stock.parts_ready ? "bg-emerald-600 text-white w-fit mx-auto mt-1" : "w-fit mx-auto mt-1"}>
+              {stock.parts_ready ? "อะไหล่พร้อมแล้ว" : "รออะไหล่"}
+            </Badge>
+          </div>
+
+          {/* Desktop & Laptop Layout (>= 1024px) */}
+          <div className="hidden lg:flex items-center justify-between gap-2">
             <div className="flex items-center gap-2">
-              <div className="p-2 rounded-lg bg-primary/10 text-primary">
+              <div className="p-2 rounded-lg bg-primary/10 text-primary shrink-0">
                 <ShoppingCart className="h-5 w-5" />
               </div>
               <div>
@@ -151,7 +172,7 @@ export function StockRequisitionDialog({ request, open, onOpenChange }: Props) {
                 </DialogDescription>
               </div>
             </div>
-            <Badge variant={stock.parts_ready ? "default" : "outline"} className={stock.parts_ready ? "bg-emerald-600 text-white" : ""}>
+            <Badge variant={stock.parts_ready ? "default" : "outline"} className={stock.parts_ready ? "bg-emerald-600 text-white shrink-0" : "shrink-0"}>
               {stock.parts_ready ? "อะไหล่พร้อมแล้ว" : "รออะไหล่"}
             </Badge>
           </div>
@@ -194,46 +215,49 @@ export function StockRequisitionDialog({ request, open, onOpenChange }: Props) {
           </div>
         )}
 
-        {/* System Connection Switch */}
-        <Card className="p-3 bg-muted/40 border-dashed space-y-2">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
+        {/* System Connection Switch Card */}
+        <Card className="p-3.5 bg-muted/40 border-dashed space-y-3">
+          {/* Top Row: Connection Status & Toggle */}
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5">
+            <div className="flex items-start gap-2 min-w-0">
               {stock.is_system_connected ? (
-                <Link className="h-4 w-4 text-emerald-600" />
+                <Link className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
               ) : (
-                <Unlink className="h-4 w-4 text-amber-600" />
+                <Unlink className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
               )}
-              <span className="text-xs font-semibold">
-                สถานะการเชื่อมระบบ Stock:{" "}
-                <span className={stock.is_system_connected ? "text-emerald-600 font-bold" : "text-amber-600 font-bold"}>
-                  {stock.is_system_connected ? "เชื่อมต่อกับระบบคลังสินค้าแล้ว (Online)" : "ไม่ได้เชื่อมต่อระบบ (Manual Checkbox Mode)"}
+              <div className="text-xs leading-tight">
+                <span className="text-muted-foreground block font-medium">สถานะเชื่อมต่อคลังสินค้า:</span>
+                <span className={`font-bold ${stock.is_system_connected ? "text-emerald-600" : "text-amber-600"}`}>
+                  {stock.is_system_connected ? "เชื่อมต่อระบบแล้ว (Online)" : "ไม่ได้เชื่อมต่อระบบ (Manual Mode)"}
                 </span>
-              </span>
+              </div>
             </div>
-            <div className="flex items-center gap-2">
-              <Label htmlFor="stock-switch" className="text-xs text-muted-foreground cursor-pointer">
+            <div className="flex items-center gap-2 self-end sm:self-auto shrink-0 bg-background/80 px-2.5 py-1 rounded-md border text-xs">
+              <Label htmlFor="stock-switch" className="text-[11px] font-medium text-muted-foreground cursor-pointer whitespace-nowrap">
                 จำลองการเชื่อมต่อ
               </Label>
               <Switch id="stock-switch" disabled={isCompleted} checked={stock.is_system_connected} onCheckedChange={handleToggleConnected} />
             </div>
           </div>
 
-          {/* Parts Ready Checkbox */}
-          <div className="pt-2 border-t flex items-center justify-between">
-            <div className="flex items-center gap-2">
+          {/* Bottom Row: Parts Ready Checkbox & Total Price */}
+          <div className="pt-2.5 border-t border-border/80 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+            <div className="flex items-center gap-2.5">
               <Checkbox
                 id="parts-ready"
                 disabled={isCompleted}
                 checked={stock.parts_ready}
                 onCheckedChange={(c) => handleTogglePartsReady(!!c)}
-                className="h-5 w-5 border-2 data-[state=checked]:bg-emerald-600 data-[state=checked]:border-emerald-600"
+                className="h-5 w-5 border-2 data-[state=checked]:bg-emerald-600 data-[state=checked]:border-emerald-600 shrink-0"
               />
-              <Label htmlFor="parts-ready" className="text-sm font-bold text-foreground cursor-pointer flex items-center gap-1.5">
-                <CheckCircle2 className={`h-4 w-4 ${stock.parts_ready ? "text-emerald-600" : "text-muted-foreground"}`} />
-                ปุ่ม Checkbox ✅ "อะไหล่พร้อมแล้ว"
+              <Label htmlFor="parts-ready" className="text-xs sm:text-sm font-bold text-foreground cursor-pointer flex items-center gap-1.5 select-none">
+                <span>อะไหล่พร้อมใช้งานแล้ว</span>
+                <Badge variant={stock.parts_ready ? "default" : "outline"} className={`text-[10px] py-0 px-1.5 ${stock.parts_ready ? "bg-emerald-600 text-white" : "text-amber-600 border-amber-400"}`}>
+                  {stock.parts_ready ? "พร้อมเบิก" : "รอเตรียมของ"}
+                </Badge>
               </Label>
             </div>
-            <div className="text-xs text-muted-foreground font-mono">
+            <div className="text-xs text-muted-foreground font-mono self-end sm:self-auto bg-background/60 px-2 py-0.5 rounded border">
               ราคารวมทั้งหมด: <span className="font-bold text-primary text-sm">฿{stock.total_price.toLocaleString()}</span>
             </div>
           </div>

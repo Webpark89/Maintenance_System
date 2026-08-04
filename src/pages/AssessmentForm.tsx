@@ -35,6 +35,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { calculateRepairDuration } from "@/lib/holidayUtils";
+import { getCurrentUser } from "@/lib/auth";
 import {
   ArrowLeft,
   Calendar,
@@ -134,6 +135,9 @@ const AssessmentForm = () => {
   const allRequests = useRequests();
   const request = useRequest(id) ?? allRequests[0];
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const currentUser = getCurrentUser();
+  const isSupervisor = currentUser?.role === "supervisor";
 
   const [visitDate, setVisitDate] = useState(
     request.request_details?.access_required
@@ -499,8 +503,13 @@ const AssessmentForm = () => {
           <Button variant="outline" className="hidden md:inline-flex" onClick={() => applyStatusAction("waiting", "รออะไหล่")}>
             รออะไหล่
           </Button>
-          <Button variant="industrial" className="hidden md:inline-flex gap-1" onClick={() => setIsDualSigOpen(true)}>
-            อนุมัติปิดงาน (Sign 2 คน)
+          <Button
+            variant={isSupervisor ? "industrial" : "outline"}
+            className="hidden md:inline-flex gap-1"
+            onClick={() => setIsDualSigOpen(true)}
+            title={isSupervisor ? "อนุมัติปิดงาน (สำหรับ Supervisor)" : "ดูการอนุมัติปิดงาน (เฉพาะ Supervisor อนุมัติได้)"}
+          >
+            {isSupervisor ? "อนุมัติปิดงาน (Sign 2 คน)" : "ดูการอนุมัติ 2 คน"}
           </Button>
           <Button variant="outline" onClick={() => navigate("/board")} className="flex-1 sm:flex-initial">
             ยกเลิก

@@ -389,71 +389,76 @@ export function JobCard({
           {/* Action Buttons */}
           {isExpanded && (
             <div className="space-y-1.5 pt-2 border-t border-dashed">
-              <div className="flex flex-wrap gap-1">
+              <div className="grid grid-cols-2 gap-1.5">
                 <Button
                   type="button"
                   size="sm"
                   variant="outline"
-                  className="h-8 text-xs font-semibold px-2.5 gap-1.5 rounded-md border-warning/40 text-warning hover:bg-warning/10 transition-all shadow-xs"
+                  className="h-8 text-[11px] font-semibold px-2 gap-1.5 rounded-md border-warning/40 text-warning hover:text-warning hover:bg-warning/10 transition-all shadow-xs justify-start"
                   onClick={(e) => {
                     e.stopPropagation();
                     onOpenStockRequisition?.(request.request_id);
                   }}
                 >
                   <ShoppingCart className="h-3.5 w-3.5 shrink-0" />
-                  <span>เบิกอะไหล่ {request.stock_requisition?.parts_ready ? "✅ (พร้อม)" : request.stock_requisition?.requisitions?.length ? `(${request.stock_requisition.requisitions.length})` : ""}</span>
+                  <span className="truncate">เบิกอะไหล่ {request.stock_requisition?.parts_ready ? "✅" : request.stock_requisition?.requisitions?.length ? `(${request.stock_requisition.requisitions.length})` : ""}</span>
                 </Button>
 
                 <Button
                   type="button"
                   size="sm"
                   variant="outline"
-                  className="h-8 text-xs font-semibold px-2.5 gap-1.5 rounded-md border-primary/40 text-primary hover:bg-primary/10 transition-all shadow-xs"
+                  className="h-8 text-[11px] font-semibold px-2 gap-1.5 rounded-md border-primary/40 text-primary hover:text-primary hover:bg-primary/10 transition-all shadow-xs justify-start"
                   onClick={(e) => {
                     e.stopPropagation();
                     onOpenDualSignature?.(request.request_id);
                   }}
+                  title={isSupervisor ? "ลงนามอนุมัติ (สิทธิ์ Supervisor)" : "ดูการอนุมัติ 2 คน (เฉพาะ Supervisor อนุมัติได้)"}
                 >
                   <FileCheck2 className="h-3.5 w-3.5 shrink-0" />
-                  <span>อนุมัติ 2 คน {request.dual_approval?.status === "approved" ? "✅ (เรียบร้อย)" : request.dual_approval?.status === "partial" ? "(1/2)" : "(0/2)"}</span>
+                  <span className="truncate">
+                    อนุมัติ 2 คน {request.dual_approval?.status === "approved" ? "✅" : request.dual_approval?.status === "partial" ? "(1/2)" : "(0/2)"}
+                  </span>
                 </Button>
 
                 <Button
                   type="button"
                   size="sm"
                   variant="outline"
-                  className="h-8 text-xs font-semibold px-2.5 gap-1.5 rounded-md border-success/40 text-success hover:bg-success/10 transition-all shadow-xs"
+                  className="h-8 text-[11px] font-semibold px-2 gap-1.5 rounded-md border-success/40 text-success hover:text-success hover:bg-success/10 transition-all shadow-xs justify-start"
                   onClick={(e) => {
                     e.stopPropagation();
                     onOpenRecheck?.(request.request_id);
                   }}
                 >
                   <CalendarCheck2 className="h-3.5 w-3.5 shrink-0" />
-                  <span>ตรวจซ้ำ 2 อาทิตย์ {request.recheck_data?.round1?.status === "completed" ? "✅" : ""}</span>
+                  <span className="truncate">ตรวจซ้ำ 2 อาทิตย์ {request.recheck_data?.round1?.status === "completed" ? "✅" : ""}</span>
                 </Button>
 
                 <Button
                   type="button"
                   size="sm"
                   variant="outline"
-                  className="h-8 text-xs font-semibold px-2.5 gap-1.5 rounded-md border-accent/40 text-accent hover:bg-accent/10 transition-all shadow-xs"
+                  className="h-8 text-[11px] font-semibold px-2 gap-1.5 rounded-md border-accent/40 text-accent hover:text-accent hover:bg-accent/10 transition-all shadow-xs justify-start"
                   onClick={(e) => {
                     e.stopPropagation();
                     onOpenPrint?.(request);
                   }}
                 >
                   <Printer className="h-3.5 w-3.5 shrink-0" />
-                  <span>พิมพ์ A4</span>
+                  <span className="truncate">พิมพ์ A4</span>
                 </Button>
+              </div>
 
-                {/* Cancel or Delete Action Button */}
-                {!isCompleted && (
-                  isSupervisor ? (
+              {/* Cancel or Delete Action Button */}
+              {!isCompleted && (
+                <div className="pt-1 flex justify-end">
+                  {isSupervisor ? (
                     <Button
                       type="button"
                       size="sm"
                       variant="ghost"
-                      className="h-8 text-xs font-semibold px-2.5 gap-1.5 rounded-md border border-rose-200 text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-all shadow-xs ml-auto"
+                      className="h-7 text-[11px] font-semibold px-2.5 gap-1 rounded-md border border-rose-200 text-rose-600 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-all shadow-xs"
                       onClick={(e) => {
                         e.stopPropagation();
                         handleDirectDelete();
@@ -468,7 +473,7 @@ export function JobCard({
                       type="button"
                       size="sm"
                       variant="ghost"
-                      className="h-8 text-xs font-semibold px-2.5 gap-1.5 rounded-md border border-amber-300 text-amber-700 hover:bg-amber-50 dark:hover:bg-amber-950/40 transition-all shadow-xs ml-auto"
+                      className="h-7 text-[11px] font-semibold px-2.5 gap-1 rounded-md border border-amber-300 text-amber-700 hover:text-amber-700 hover:bg-amber-50 dark:hover:bg-amber-950/40 transition-all shadow-xs"
                       onClick={(e) => {
                         e.stopPropagation();
                         setIsCancelModalOpen(true);
@@ -479,9 +484,9 @@ export function JobCard({
                       <Ban className="h-3.5 w-3.5 shrink-0 text-amber-600" />
                       <span>{request.cancellation_request?.status === "pending" ? "รออนุมัติยกเลิก" : "ขอยกเลิกงาน"}</span>
                     </Button>
-                  )
-                )}
-              </div>
+                  )}
+                </div>
+              )}
             </div>
           )}
 
@@ -528,7 +533,7 @@ export function JobCard({
 
       {/* Technician Cancel Request Modal */}
       <Dialog open={isCancelModalOpen} onOpenChange={setIsCancelModalOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-md" onOpenAutoFocus={(e) => e.preventDefault()}>
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-base font-bold text-amber-600">
               <Ban className="h-5 w-5" />
@@ -565,7 +570,7 @@ export function JobCard({
 
       {/* Supervisor Reject Cancellation Dialog */}
       <Dialog open={isRejectDialogOpen} onOpenChange={setIsRejectDialogOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-md" onOpenAutoFocus={(e) => e.preventDefault()}>
           <DialogHeader>
             <DialogTitle className="text-base font-bold text-rose-600">
               ปฏิเสธคำขอยกเลิกงาน ({request.request_id})

@@ -318,7 +318,7 @@ export default function AssetManagement() {
 
       {/* Dialog 1: Form Add/Edit Asset */}
       <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
-        <DialogContent className="max-w-xl">
+        <DialogContent className="max-w-xl" onOpenAutoFocus={(e) => e.preventDefault()}>
           <DialogHeader>
             <DialogTitle>{editingAsset ? "แก้ไขข้อมูลทรัพย์สิน" : "ลงทะเบียนเครื่องจักรใหม่"}</DialogTitle>
             <DialogDescription>
@@ -449,7 +449,7 @@ export default function AssetManagement() {
       {/* Dialog 2: Print & QR Code Badge Modal */}
       {qrModalAsset && (
         <Dialog open={!!qrModalAsset} onOpenChange={() => setQrModalAsset(null)}>
-          <DialogContent className="max-w-md">
+          <DialogContent className="max-w-md" onOpenAutoFocus={(e) => e.preventDefault()}>
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
                 <Printer className="h-5 w-5 text-indigo-600" />
@@ -463,16 +463,16 @@ export default function AssetManagement() {
             {/* Printable Badge Container */}
             <div
               ref={printRef}
-              className="p-5 border-2 border-indigo-600 rounded-xl bg-white text-slate-900 space-y-4 shadow-sm text-center relative overflow-hidden"
+              className="p-5 border-2 border-indigo-600 dark:border-indigo-500 rounded-xl bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 space-y-4 shadow-sm text-center relative overflow-hidden"
             >
-              <div className="border-b border-indigo-200 pb-2">
-                <div className="text-[10px] font-extrabold uppercase tracking-widest text-indigo-600">
+              <div className="border-b border-indigo-200 dark:border-indigo-900/50 pb-2">
+                <div className="text-[10px] font-extrabold uppercase tracking-widest text-indigo-600 dark:text-indigo-400">
                   FIXFLOW MAINTENANCE SYSTEM
                 </div>
-                <h2 className="text-lg font-black tracking-tight text-slate-900 mt-0.5">
+                <h2 className="text-lg font-black tracking-tight text-slate-900 dark:text-slate-100 mt-0.5">
                   {qrModalAsset.asset_name}
                 </h2>
-                <span className="inline-block mt-1 font-mono text-xs font-bold px-2 py-0.5 rounded bg-indigo-100 text-indigo-800">
+                <span className="inline-block mt-1 font-mono text-xs font-bold px-2 py-0.5 rounded bg-indigo-100 dark:bg-indigo-950/60 text-indigo-800 dark:text-indigo-300">
                   ID: {qrModalAsset.asset_id}
                 </span>
               </div>
@@ -482,30 +482,30 @@ export default function AssetManagement() {
                 <img
                   src={getQrDataUrl(qrModalAsset.asset_id)}
                   alt={`QR ${qrModalAsset.asset_id}`}
-                  className="w-44 h-44 border-4 border-slate-900 rounded-lg p-1 bg-white shadow-inner"
+                  className="w-44 h-44 border-4 border-slate-900 dark:border-slate-200 rounded-lg p-1 bg-white shadow-inner"
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-1 text-[11px] text-left bg-slate-50 p-2.5 rounded border border-slate-200">
+              <div className="grid grid-cols-2 gap-1 text-[11px] text-left bg-slate-50 dark:bg-slate-800/60 p-2.5 rounded border border-slate-200 dark:border-slate-700">
                 <div>
-                  <span className="text-slate-500 block text-[9px] uppercase font-bold">โซน / อาคาร</span>
-                  <span className="font-bold">{qrModalAsset.machine_zone} ({qrModalAsset.location_building})</span>
+                  <span className="text-slate-500 dark:text-slate-400 block text-[9px] uppercase font-bold">โซน / อาคาร</span>
+                  <span className="font-bold text-slate-800 dark:text-slate-200">{qrModalAsset.machine_zone} ({qrModalAsset.location_building})</span>
                 </div>
                 <div>
-                  <span className="text-slate-500 block text-[9px] uppercase font-bold">เลขเครื่อง</span>
-                  <span className="font-bold">{qrModalAsset.machine_number}</span>
+                  <span className="text-slate-500 dark:text-slate-400 block text-[9px] uppercase font-bold">เลขเครื่อง</span>
+                  <span className="font-bold text-slate-800 dark:text-slate-200">{qrModalAsset.machine_number}</span>
                 </div>
-                <div className="col-span-2 pt-1 border-t border-slate-200 flex justify-between items-center">
-                  <span className="text-slate-500 text-[10px]">เวลาเข้าพื้นที่: {qrModalAsset.access_time_window}</span>
+                <div className="col-span-2 pt-1 border-t border-slate-200 dark:border-slate-700 flex justify-between items-center">
+                  <span className="text-slate-500 dark:text-slate-400 text-[10px]">เวลาเข้าพื้นที่: {qrModalAsset.access_time_window}</span>
                   {qrModalAsset.access_required && (
-                    <span className="text-rose-600 font-bold text-[9px] px-1 bg-rose-50 rounded">
+                    <span className="text-rose-600 dark:text-rose-400 font-bold text-[9px] px-1 bg-rose-50 dark:bg-rose-950/50 rounded">
                       [ ต้องขออนุญาต ]
                     </span>
                   )}
                 </div>
               </div>
 
-              <div className="text-[10px] text-slate-400 italic">
+              <div className="text-[10px] text-slate-400 dark:text-slate-500 italic">
                 * สแกน QR Code เพื่อเข้าสู่หน้าแจ้งซ่อมและประเมินงานทันที
               </div>
             </div>

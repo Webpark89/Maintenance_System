@@ -94,14 +94,30 @@ export function ExportDataDialog({ open, onOpenChange, requests }: ExportDataDia
         className="sm:max-w-md"
         onOpenAutoFocus={(e) => e.preventDefault()}
       >
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-foreground">
-            <FileSpreadsheet className="h-5 w-5 text-success" />
-            ส่งออกข้อมูลใบแจ้งซ่อม (Export Excel / CSV)
-          </DialogTitle>
-          <DialogDescription className="text-xs">
-            เลือกเงื่อนไขช่วงเวลาและสถานะเพื่อดาวน์โหลดรายงานใบแจ้งซ่อมเป็นไฟล์ CSV
-          </DialogDescription>
+        <DialogHeader className="border-b pb-3">
+          {/* Mobile, Tablet & iPad Layout (< 1024px) */}
+          <div className="flex lg:hidden flex-col items-center text-center space-y-1.5">
+            <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 w-fit mx-auto">
+              <FileSpreadsheet className="h-5 w-5" />
+            </div>
+            <DialogTitle className="text-base sm:text-lg font-bold text-foreground [text-wrap:balance]">
+              ส่งออกข้อมูลใบแจ้งซ่อม (Export Excel / CSV)
+            </DialogTitle>
+            <DialogDescription className="text-xs text-muted-foreground max-w-xs sm:max-w-md mx-auto leading-relaxed [text-wrap:balance]">
+              เลือกเงื่อนไขช่วงเวลาและสถานะเพื่อดาวน์โหลดรายงานใบแจ้งซ่อมเป็นไฟล์ CSV
+            </DialogDescription>
+          </div>
+
+          {/* Desktop & Laptop Layout (>= 1024px) */}
+          <div className="hidden lg:block">
+            <DialogTitle className="flex items-center gap-2 text-foreground text-lg font-bold">
+              <FileSpreadsheet className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+              ส่งออกข้อมูลใบแจ้งซ่อม (Export Excel / CSV)
+            </DialogTitle>
+            <DialogDescription className="text-xs text-muted-foreground">
+              เลือกเงื่อนไขช่วงเวลาและสถานะเพื่อดาวน์โหลดรายงานใบแจ้งซ่อมเป็นไฟล์ CSV
+            </DialogDescription>
+          </div>
         </DialogHeader>
 
         <div className="space-y-4 py-3 text-sm">

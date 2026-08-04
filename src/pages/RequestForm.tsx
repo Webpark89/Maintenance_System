@@ -30,6 +30,7 @@ import {
   History,
   LogOut,
   PencilLine,
+  RotateCcw,
   Paperclip,
   ShieldAlert,
   SlidersHorizontal,
@@ -1171,39 +1172,30 @@ const RequestForm = () => {
             </div>
 
             {/* Actions */}
-            <div className="flex flex-col sm:flex-row gap-2 pt-2 border-t">
-              <Button type="button" variant="outline" onClick={reset} className="sm:w-auto">
-                ล้างข้อมูล
+            <div className="grid grid-cols-2 gap-3 pt-4 border-t border-border/80">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={reset}
+                className="h-11 sm:h-12 w-full text-xs sm:text-sm font-semibold border-rose-200 text-rose-600 hover:bg-rose-50 hover:text-rose-700 dark:border-rose-900/50 dark:text-rose-400 dark:hover:bg-rose-950/40 shadow-xs justify-center gap-1.5"
+              >
+                <RotateCcw className="h-4 w-4 shrink-0" />
+                <span>ล้างข้อมูล</span>
               </Button>
-              <Button type="submit" variant="hero" size="lg" className="flex-1 font-bold">
-                <Send className="h-4 w-4 mr-1" />
-                ส่งคำขอแจ้งซ่อม
+              <Button
+                type="submit"
+                variant="hero"
+                className="h-11 sm:h-12 w-full text-xs sm:text-base font-bold shadow-md hover:shadow-lg transition-all rounded-lg justify-center gap-1.5 sm:gap-2"
+              >
+                <Send className="h-4 w-4 sm:h-5 sm:w-5 shrink-0" />
+                <span>ส่งคำขอแจ้งซ่อม</span>
               </Button>
             </div>
           </form>
         </Card>
 
-        {/* Mobile Sticky Action Footer */}
-      <div className="fixed bottom-0 left-0 right-0 p-3 bg-background/95 backdrop-blur border-t border-border shadow-lg sm:hidden z-30 flex items-center gap-2">
-        <Button type="button" variant="outline" size="sm" onClick={reset} className="px-3">
-          ล้าง
-        </Button>
-        <Button
-          type="button"
-          variant="hero"
-          className="flex-1 font-bold shadow-md gap-2"
-          onClick={() => {
-            const form = document.querySelector("form");
-            if (form) form.requestSubmit();
-          }}
-        >
-          <Send className="h-4 w-4" />
-          ส่งคำขอแจ้งซ่อม
-        </Button>
-      </div>
-
       <Dialog open={historyOpen} onOpenChange={setHistoryOpen}>
-        <DialogContent className="max-w-2xl max-h-[80vh] overflow-hidden flex flex-col">
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-hidden flex flex-col" onOpenAutoFocus={(e) => e.preventDefault()}>
           <DialogHeader>
             <DialogTitle>ประวัติรายการที่ฉันแจ้ง</DialogTitle>
             <DialogDescription className="text-xs">
@@ -1266,7 +1258,7 @@ const RequestForm = () => {
           }
         }}
       >
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-md" onOpenAutoFocus={(e) => e.preventDefault()}>
           <DialogHeader>
             <DialogTitle>สแกน QR Code จากกล้อง</DialogTitle>
             <DialogDescription className="text-xs">

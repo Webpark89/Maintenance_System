@@ -8,6 +8,7 @@ import {
   SheetContent,
   SheetHeader,
   SheetTitle,
+  SheetDescription,
   SheetTrigger,
 } from "@/components/ui/sheet";
 import {
@@ -155,7 +156,7 @@ export function Navbar({ title, subtitle, backUrl, actions }: NavbarProps) {
           <Button
             variant="ghost"
             size="icon"
-            className="h-8 w-8 relative text-muted-foreground hover:text-foreground hover:bg-muted"
+            className="hidden lg:inline-flex h-8 w-8 relative text-muted-foreground hover:text-foreground hover:bg-muted"
             onClick={() => navigate("/notifications")}
             title="ศูนย์แจ้งเตือน"
           >
@@ -172,7 +173,7 @@ export function Navbar({ title, subtitle, backUrl, actions }: NavbarProps) {
           <Button
             variant="ghost"
             size="icon"
-            className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+            className="hidden lg:inline-flex h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
             onClick={() => navigate("/")}
             title="ออกจากระบบ"
           >
@@ -196,7 +197,7 @@ export function Navbar({ title, subtitle, backUrl, actions }: NavbarProps) {
                       </div>
                       <div>
                         <SheetTitle className="text-base font-bold">CMMS Maintenance</SheetTitle>
-                        <p className="text-xs text-muted-foreground">เมนูนำทางระบบ</p>
+                        <SheetDescription className="text-xs text-muted-foreground">เมนูนำทางระบบ</SheetDescription>
                       </div>
                     </div>
                   </SheetHeader>
