@@ -32,3 +32,8 @@ certs/
 
 # Bun & Lockfiles
 bun.lockb
+
+# Antigravity Agent Configuration
+.agent/
+AGENTS.md
+

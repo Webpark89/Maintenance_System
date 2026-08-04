@@ -155,6 +155,41 @@ export interface SparePart {
   unit_price?: number;
 }
 
+export interface CancellationRequest {
+  requested_by: string;
+  requested_by_id?: string;
+  requested_at: string;
+  reason: string;
+  status: "pending" | "approved" | "rejected";
+  approved_by?: string;
+  approved_at?: string;
+  note?: string;
+}
+
+export interface RequisitionApproval {
+  required: boolean;
+  threshold_amount: number;
+  total_amount: number;
+  status: "pending" | "approved" | "rejected";
+  approved_by?: string;
+  approved_at?: string;
+  note?: string;
+}
+
+export interface TechnicianUser {
+  emp_id: string;
+  name: string;
+  department: string;
+  skills: string[];
+}
+
+export const TECHNICIANS_LIST: TechnicianUser[] = [
+  { emp_id: "TECH001", name: "สมศักดิ์ ช่างไฟ", department: "แผนกไฟฟ้าและสื่อสาร", skills: ["Electrical", "PLC"] },
+  { emp_id: "TECH002", name: "วิชัย เครื่องกล", department: "แผนกเครื่องจักรกล", skills: ["Mechanical", "Pneumatics"] },
+  { emp_id: "TECH003", name: "สุรชัย ไฮดรอลิก", department: "แผนกซ่อมบำรุงโรงงาน", skills: ["Hydraulics", "Welding"] },
+  { emp_id: "TECH004", name: "กิตติพงษ์ ความเย็น", department: "แผนกระบบปรับอากาศ", skills: ["HVAC", "Plumbing"] },
+];
+
 export interface WorkRequest {
   request_id: string;
   asset_name: string;
@@ -177,7 +212,10 @@ export interface WorkRequest {
   stock_requisition?: StockRequisitionData;
   dual_approval?: DualApprovalData;
   recheck_data?: RecheckData;
+  cancellation_request?: CancellationRequest;
+  requisition_approval?: RequisitionApproval;
 }
+
 
 export const MOCK_REQUESTS: WorkRequest[] = [
   {

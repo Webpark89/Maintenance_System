@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Bell, FileSpreadsheet, Filter, LayoutDashboard, LayoutGrid, List, LogOut, Menu, QrCode, Search, Wrench } from "lucide-react";
 import { toast } from "sonner";
@@ -209,6 +209,25 @@ export default function TechnicianBoard() {
     }
   };
 
+  useEffect(() => {
+    const stopPanning = () => {
+      if (isPanningRef.current) {
+        isPanningRef.current = false;
+        kanbanScrollRef.current?.classList.remove("cursor-grabbing");
+      }
+    };
+
+    window.addEventListener("mouseup", stopPanning);
+    window.addEventListener("pointerup", stopPanning);
+    window.addEventListener("blur", stopPanning);
+
+    return () => {
+      window.removeEventListener("mouseup", stopPanning);
+      window.removeEventListener("pointerup", stopPanning);
+      window.removeEventListener("blur", stopPanning);
+    };
+  }, []);
+
   const handleKanbanDragOver = (event: React.DragEvent<HTMLDivElement>) => {
     event.preventDefault();
     autoScrollKanbanByPointer(event.clientX);
@@ -218,7 +237,13 @@ export default function TechnicianBoard() {
     if (event.button !== 0 || !kanbanScrollRef.current) return;
 
     const target = event.target as HTMLElement;
-    if (target.closest("button, input, textarea, select, a, [role='button'], [draggable='true']")) return;
+    if (
+      target.closest(
+        "button, input, textarea, select, a, [role='button'], [role='combobox'], [role='option'], [role='listbox'], [draggable='true'], [data-radix-focus-guard]"
+      )
+    ) {
+      return;
+    }
 
     isPanningRef.current = true;
     panStartXRef.current = event.clientX;
@@ -228,6 +253,13 @@ export default function TechnicianBoard() {
   };
 
   const handleKanbanMouseMove = (event: React.MouseEvent<HTMLDivElement>) => {
+    if (event.buttons === 0) {
+      if (isPanningRef.current) {
+        isPanningRef.current = false;
+        kanbanScrollRef.current?.classList.remove("cursor-grabbing");
+      }
+      return;
+    }
     if (!isPanningRef.current || !kanbanScrollRef.current) return;
     const deltaX = event.clientX - panStartXRef.current;
     kanbanScrollRef.current.scrollLeft = panStartScrollLeftRef.current - deltaX;
@@ -250,6 +282,13 @@ export default function TechnicianBoard() {
     setDraggedId(null);
   };
 
+  const userRole = (JSON.parse(sessionStorage.getItem("fixflow_user") ?? "{}") as { role?: string }).role || "technician";
+  const isSupervisor = userRole === "supervisor";
+
+  const pendingApprovalsCount = useMemo(() => {
+    return requests.filter((r) => r.cancellation_request?.status === "pending" || r.requisition_approval?.status === "pending").length;
+  }, [requests]);
+
   return (
     <AppLayout
       title="TECHNICIAN BOARD"
@@ -266,8 +305,22 @@ export default function TechnicianBoard() {
       }
     >
       <div className="space-y-4">
+        {/* Supervisor Pending Approvals Banner */}
+        {isSupervisor && pendingApprovalsCount > 0 && (
+          <div className="p-3 rounded-lg bg-amber-500/15 border border-amber-500/30 text-amber-900 dark:text-amber-200 flex items-center justify-between gap-2 text-xs font-semibold animate-pulse">
+            <div className="flex items-center gap-2">
+              <span className="h-2 w-2 rounded-full bg-amber-500 animate-ping" />
+              <span>⚠️ มีรายการที่รอ Supervisor ตรวจสอบและอนุมัติทั้งหมด {pendingApprovalsCount} รายการ (คำขอยกเลิกงาน / เบิกอะไหล่มูลค่าสูง)</span>
+            </div>
+            <Button size="sm" variant="outline" className="h-7 text-xs border-amber-400 text-amber-900 dark:text-amber-100 hover:bg-amber-100 dark:hover:bg-amber-900/40" onClick={() => setSearch("ขอยกเลิก")}>
+              กรองงานรออนุมัติ
+            </Button>
+          </div>
+        )}
+
         {/* Desktop Filter Toolbar (Show on sm+) */}
         <div className="hidden sm:flex flex-wrap items-center gap-1.5 lg:gap-2 w-full">
+
           <div className="relative flex-1 min-w-[140px] sm:min-w-[180px]">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
             <Input

@@ -463,7 +463,141 @@ export const requestStore = {
     });
     emit();
   },
+
+  // --- 4. Role Permission Actions: Cancellation, Assignment & Approvals ---
+  requestCancellation(requestId: string, reason: string, requesterName: string, requesterId?: string) {
+    state = state.map((req) => {
+      if (req.request_id !== requestId) return req;
+      const now = new Date().toISOString();
+      const nextTimeline = [
+        ...req.status_timeline,
+        {
+          event_id: randomId("evt"),
+          status: req.status,
+          updated_by: requesterName,
+          updated_by_role: "technician" as const,
+          updated_at: now,
+          note: `ยื่นคำขอยกเลิกงานซ่อม เหตุผล: ${reason}`,
+        },
+      ];
+
+      return {
+        ...req,
+        cancellation_request: {
+          requested_by: requesterName,
+          requested_by_id: requesterId,
+          requested_at: now,
+          reason,
+          status: "pending",
+        },
+        status_timeline: nextTimeline,
+      };
+    });
+    emit();
+  },
+
+  approveCancellation(requestId: string, supervisorName: string, approved: boolean, note?: string) {
+    const target = state.find((r) => r.request_id === requestId);
+    if (!target) return;
+
+    const now = new Date().toISOString();
+    if (approved) {
+      // Remove request when cancellation approved by supervisor
+      state = state.filter((r) => r.request_id !== requestId);
+    } else {
+      state = state.map((req) => {
+        if (req.request_id !== requestId) return req;
+        return {
+          ...req,
+          cancellation_request: req.cancellation_request
+            ? {
+                ...req.cancellation_request,
+                status: "rejected",
+                approved_by: supervisorName,
+                approved_at: now,
+                note,
+              }
+            : undefined,
+          status_timeline: [
+            ...req.status_timeline,
+            {
+              event_id: randomId("evt"),
+              status: req.status,
+              updated_by: supervisorName,
+              updated_by_role: "technician" as const,
+              updated_at: now,
+              note: `ปฏิเสธคำขอยกเลิกงานซ่อม (${note ?? "ไม่มีระบุ"})`,
+            },
+          ],
+        };
+      });
+    }
+    emit();
+  },
+
+  deleteRequestBySupervisor(requestId: string) {
+    state = state.filter((r) => r.request_id !== requestId);
+    emit();
+  },
+
+  assignTechnician(requestId: string, technicianId: string, supervisorName: string = "Supervisor") {
+    state = state.map((req) => {
+      if (req.request_id !== requestId) return req;
+      const now = new Date().toISOString();
+      const tech = req.assigned_to === technicianId;
+      if (tech) return req;
+
+      return {
+        ...req,
+        assigned_to: technicianId,
+        status_timeline: [
+          ...req.status_timeline,
+          {
+            event_id: randomId("evt"),
+            status: req.status,
+            updated_by: supervisorName,
+            updated_by_role: "technician" as const,
+            updated_at: now,
+            note: `มอบหมาย/เปลี่ยนช่างผู้รับผิดชอบเป็น ${technicianId}`,
+          },
+        ],
+      };
+    });
+    emit();
+  },
+
+  approveRequisition(requestId: string, supervisorName: string, approved: boolean = true, note?: string) {
+    state = state.map((req) => {
+      if (req.request_id !== requestId) return req;
+      if (!req.requisition_approval) return req;
+      const now = new Date().toISOString();
+
+      return {
+        ...req,
+        requisition_approval: {
+          ...req.requisition_approval,
+          status: approved ? "approved" : "rejected",
+          approved_by: supervisorName,
+          approved_at: now,
+          note,
+        },
+        status_timeline: [
+          ...req.status_timeline,
+          {
+            event_id: randomId("evt"),
+            status: req.status,
+            updated_by: supervisorName,
+            updated_by_role: "technician" as const,
+            updated_at: now,
+            note: approved ? `อนุมัติการเบิกอะไหล่มูลค่าสูง (${req.stock_requisition?.total_price ?? 0} บาท)` : `ปฏิเสธการเบิกอะไหล่มูลค่าสูง`,
+          },
+        ],
+      };
+    });
+    emit();
+  },
 };
+
 
 export function useRequests(): WorkRequest[] {
   return useSyncExternalStore(

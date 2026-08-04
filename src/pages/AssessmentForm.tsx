@@ -60,6 +60,7 @@ import {
   Gauge,
   MessageSquare,
   AlertTriangle,
+  Lock,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -197,8 +198,14 @@ const AssessmentForm = () => {
     toast.success(`อัปเดตสถานะเป็น ${STATUS_LABEL[nextStatus]}`);
   };
 
+  const isCompleted = request?.status === "complete";
+
   const handleSave = () => {
     if (!request) return;
+    if (isCompleted) {
+      toast.error("งานนี้เสร็จสิ้นสมบูรณ์แล้ว ไม่สามารถแก้ไขข้อมูลย้อนหลังได้");
+      return;
+    }
     if (!resultText.trim()) {
       toast.error("กรุณากรอกผลการประเมินหน้างาน");
       return;
@@ -225,7 +232,6 @@ const AssessmentForm = () => {
       notifyRequester: true,
     });
     requestStore.update(request.request_id, {
-      // keep current save payload available on the request snapshot
       assessment_report: report,
     });
     toast.success("บันทึกข้อมูลการประเมินเรียบร้อย");
@@ -250,7 +256,17 @@ const AssessmentForm = () => {
       backUrl="/board"
       actions={<PriorityBadge priority={request.priority} />}
     >
+      {isCompleted && (
+        <div className="mb-4 p-3 rounded-lg bg-slate-900 text-slate-100 flex items-center justify-between gap-2 text-xs font-semibold">
+          <div className="flex items-center gap-2">
+            <Lock className="h-4 w-4 text-emerald-400 shrink-0" />
+            <span>🔒 งานซ่อมนี้เสร็จสิ้นสมบูรณ์แล้ว (Status: Complete) — ระบบล็อกการแก้ไขฟอร์มประเมินย้อนหลังเพื่อป้องกันการปรับ KPI</span>
+          </div>
+          <span className="px-2 py-0.5 rounded bg-slate-800 border border-slate-700 text-emerald-400 text-[10px]">Read Only</span>
+        </div>
+      )}
       <div className="grid lg:grid-cols-[380px_1fr] gap-6 pb-24">
+
         <aside className="lg:sticky lg:top-24 lg:self-start space-y-4">
           <Card className="p-5 bg-gradient-card shadow-card space-y-4">
             <div className="flex items-center gap-2 mb-4">

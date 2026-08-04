@@ -11,7 +11,8 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { MOCK_SPARE_PARTS, WorkRequest } from "@/lib/mockData";
 import { requestStore } from "@/lib/requestStore";
-import { PackageCheck, PackagePlus, History, Link, Unlink, DollarSign, CheckCircle2, AlertCircle, ShoppingCart } from "lucide-react";
+import { getCurrentUser } from "@/lib/auth";
+import { PackageCheck, PackagePlus, History, Link, Unlink, DollarSign, CheckCircle2, AlertCircle, ShoppingCart, Lock, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 
 interface Props {
@@ -21,6 +22,10 @@ interface Props {
 }
 
 export function StockRequisitionDialog({ request, open, onOpenChange }: Props) {
+  const user = getCurrentUser();
+  const isSupervisor = user?.role === "supervisor";
+  const isCompleted = request.status === "complete";
+
   const stock = request.stock_requisition ?? {
     is_system_connected: false,
     parts_ready: false,
@@ -28,6 +33,9 @@ export function StockRequisitionDialog({ request, open, onOpenChange }: Props) {
     requisitions: [],
     logs: [],
   };
+
+  const isHighCost = stock.total_price >= 10000;
+  const isApprovalPending = isHighCost && request.requisition_approval?.status !== "approved";
 
   const [selectedPartId, setSelectedPartId] = useState<string>("");
   const [customPartName, setCustomPartName] = useState("");
@@ -53,6 +61,11 @@ export function StockRequisitionDialog({ request, open, onOpenChange }: Props) {
 
   const handleAddRequisition = (e: React.FormEvent) => {
     e.preventDefault();
+    if (isCompleted) {
+      toast.error("งานซ่อมเสร็จสิ้นสมบูรณ์แล้ว ไม่สามารถแก้ไขหรือเบิกอะไหล่เพิ่มได้");
+      return;
+    }
+
     const nameToUse = selectedPartId === "custom" ? customPartName : MOCK_SPARE_PARTS.find((p) => p.part_id === selectedPartId)?.name || customPartName;
     if (!nameToUse.trim()) {
       toast.error("กรุณาระบุชื่ออะไหล่");
@@ -72,10 +85,25 @@ export function StockRequisitionDialog({ request, open, onOpenChange }: Props) {
         unit,
         unit_price: Number(unitPrice),
       },
-      "ช่างซ่อมบำรุง",
+      user?.name || "ช่างซ่อมบำรุง",
     );
 
-    toast.success(`เพิ่มรายการเบิก ${nameToUse} เรียบร้อยแล้ว`);
+    // Auto set requisition approval if price exceeds threshold
+    const newTotal = stock.total_price + quantity * unitPrice;
+    if (newTotal >= 10000 && request.requisition_approval?.status !== "approved") {
+      requestStore.update(request.request_id, {
+        requisition_approval: {
+          required: true,
+          threshold_amount: 10000,
+          total_amount: newTotal,
+          status: "pending",
+        },
+      });
+      toast.warning(`ยอดรวมเบิกอะไหล่ ฿${newTotal.toLocaleString()} เกิน 10,000 บาท — ต้องรอ Supervisor อนุมัติ`);
+    } else {
+      toast.success(`เพิ่มรายการเบิก ${nameToUse} เรียบร้อยแล้ว`);
+    }
+
     // Reset form
     setSelectedPartId("");
     setCustomPartName("");
@@ -84,7 +112,11 @@ export function StockRequisitionDialog({ request, open, onOpenChange }: Props) {
   };
 
   const handleTogglePartsReady = (checked: boolean) => {
-    requestStore.togglePartsReady(request.request_id, checked, "ช่างซ่อมบำรุง");
+    if (isCompleted) {
+      toast.error("งานเสร็จสิ้นแล้ว ไม่สามารถเปลี่ยนสถานะอะไหล่ได้");
+      return;
+    }
+    requestStore.togglePartsReady(request.request_id, checked, user?.name || "ช่างซ่อมบำรุง");
     if (checked) {
       toast.success("อัปเดตสถานะ: อะไหล่พร้อมแล้ว! ระบบส่งแจ้งเตือนเรียบร้อย");
     } else {
@@ -93,8 +125,14 @@ export function StockRequisitionDialog({ request, open, onOpenChange }: Props) {
   };
 
   const handleToggleConnected = (checked: boolean) => {
+    if (isCompleted) return;
     requestStore.toggleSystemConnected(request.request_id, checked, "ระบบคลังสินค้า");
     toast.info(checked ? "เปิดการเชื่อมต่อระบบ Stock คลังสินค้า" : "สลับเป็นโหมด Manual ไม่เชื่อมต่อ Stock");
+  };
+
+  const handleApproveHighCost = () => {
+    requestStore.approveRequisition(request.request_id, user?.name || "Supervisor", true);
+    toast.success("อนุมัติการเบิกอะไหล่มูลค่าสูงเรียบร้อยแล้ว");
   };
 
   return (
@@ -119,6 +157,43 @@ export function StockRequisitionDialog({ request, open, onOpenChange }: Props) {
           </div>
         </DialogHeader>
 
+        {/* Lock Banner if Completed */}
+        {isCompleted && (
+          <div className="p-3 rounded-lg bg-slate-900 text-slate-100 flex items-center justify-between gap-2 text-xs">
+            <div className="flex items-center gap-2 font-semibold">
+              <Lock className="h-4 w-4 text-emerald-400 shrink-0" />
+              <span>งานซ่อมนี้เสร็จสิ้นสมบูรณ์แล้ว — ล็อกการแก้ไขรายการเบิกอะไหล่เพื่อป้องกันการแก้ไขย้อนหลัง</span>
+            </div>
+            <Badge variant="outline" className="border-slate-700 text-emerald-400 bg-slate-800 text-[10px] shrink-0">
+              Read Only Mode
+            </Badge>
+          </div>
+        )}
+
+        {/* High Cost Approval Warning Banner */}
+        {isHighCost && (
+          <div className={`p-3 rounded-lg border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 text-xs ${
+            request.requisition_approval?.status === "approved"
+              ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-900 dark:text-emerald-200"
+              : "bg-blue-500/10 border-blue-500/30 text-blue-900 dark:text-blue-200"
+          }`}>
+            <div className="flex items-center gap-2 font-semibold">
+              <ShieldCheck className="h-4 w-4 text-blue-600 dark:text-blue-400 shrink-0" />
+              <span>
+                มูลค่าเบิกอะไหล่รวม: <strong className="font-mono text-sm">฿{stock.total_price.toLocaleString()}</strong> (เกินเกณฑ์ ฿10,000) —{" "}
+                {request.requisition_approval?.status === "approved"
+                  ? `อนุมัติแล้ว โดย ${request.requisition_approval.approved_by}`
+                  : "รอการอนุมัติจาก Supervisor"}
+              </span>
+            </div>
+            {isSupervisor && request.requisition_approval?.status !== "approved" && !isCompleted && (
+              <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs h-8 shrink-0" onClick={handleApproveHighCost}>
+                <CheckCircle2 className="h-3.5 w-3.5 mr-1" /> กดอนุมัติการเบิก
+              </Button>
+            )}
+          </div>
+        )}
+
         {/* System Connection Switch */}
         <Card className="p-3 bg-muted/40 border-dashed space-y-2">
           <div className="flex items-center justify-between">
@@ -139,7 +214,7 @@ export function StockRequisitionDialog({ request, open, onOpenChange }: Props) {
               <Label htmlFor="stock-switch" className="text-xs text-muted-foreground cursor-pointer">
                 จำลองการเชื่อมต่อ
               </Label>
-              <Switch id="stock-switch" checked={stock.is_system_connected} onCheckedChange={handleToggleConnected} />
+              <Switch id="stock-switch" disabled={isCompleted} checked={stock.is_system_connected} onCheckedChange={handleToggleConnected} />
             </div>
           </div>
 
@@ -148,6 +223,7 @@ export function StockRequisitionDialog({ request, open, onOpenChange }: Props) {
             <div className="flex items-center gap-2">
               <Checkbox
                 id="parts-ready"
+                disabled={isCompleted}
                 checked={stock.parts_ready}
                 onCheckedChange={(c) => handleTogglePartsReady(!!c)}
                 className="h-5 w-5 border-2 data-[state=checked]:bg-emerald-600 data-[state=checked]:border-emerald-600"
@@ -179,88 +255,90 @@ export function StockRequisitionDialog({ request, open, onOpenChange }: Props) {
           {/* Requisition Tab Content */}
           <TabsContent value="requisitions" className="space-y-4 pt-3">
             {/* Form */}
-            <form onSubmit={handleAddRequisition} className="p-3 border rounded-lg bg-card space-y-3">
-              <div className="text-xs font-semibold text-primary flex items-center gap-1">
-                <PackagePlus className="h-3.5 w-3.5" />
-                เพิ่มรายการเบิกอะไหล่ใหม่
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <Label className="text-xs">เลือกอะไหล่ในสต็อก / กรอกเอง</Label>
-                  <Select value={selectedPartId} onValueChange={handleSelectPart}>
-                    <SelectTrigger className="h-9 text-xs">
-                      <SelectValue placeholder="-- เลือกรายการอะไหล่ --" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {MOCK_SPARE_PARTS.map((part) => (
-                        <SelectItem key={part.part_id} value={part.part_id} className="text-xs">
-                          {part.name} (คงเหลือ: {part.stock} {part.unit} @฿{part.unit_price})
-                        </SelectItem>
-                      ))}
-                      <SelectItem value="custom" className="text-xs font-semibold text-primary">
-                        + ระบุรายการอะไหล่นอกคลัง (Custom)
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {selectedPartId === "custom" && (
-                  <div className="space-y-1">
-                    <Label className="text-xs">ชื่ออะไหล่ / อุปกรณ์</Label>
-                    <Input
-                      className="h-9 text-xs"
-                      placeholder="เช่น ซีลยางพิเศษ 45mm"
-                      value={customPartName}
-                      onChange={(e) => setCustomPartName(e.target.value)}
-                    />
-                  </div>
-                )}
-
-                <div className="grid grid-cols-3 gap-2">
-                  <div className="space-y-1">
-                    <Label className="text-xs">จำนวน</Label>
-                    <Input
-                      type="number"
-                      min={1}
-                      className="h-9 text-xs"
-                      value={quantity}
-                      onChange={(e) => setQuantity(Number(e.target.value))}
-                    />
-                  </div>
-
-                  <div className="space-y-1">
-                    <Label className="text-xs">หน่วย</Label>
-                    <Input
-                      className="h-9 text-xs"
-                      placeholder="ชิ้น/ชุด"
-                      value={unit}
-                      onChange={(e) => setUnit(e.target.value)}
-                    />
-                  </div>
-
-                  <div className="space-y-1">
-                    <Label className="text-xs">ราคา/หน่วย (บาท)</Label>
-                    <Input
-                      type="number"
-                      min={0}
-                      className="h-9 text-xs font-mono"
-                      value={unitPrice}
-                      onChange={(e) => setUnitPrice(Number(e.target.value))}
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex items-center justify-between pt-1">
-                <div className="text-xs text-muted-foreground">
-                  ราคารวมรายการนี้: <span className="font-bold text-foreground font-mono">฿{(quantity * unitPrice).toLocaleString()}</span>
-                </div>
-                <Button type="submit" size="sm" variant="industrial" className="h-8 text-xs gap-1">
+            {!isCompleted && (
+              <form onSubmit={handleAddRequisition} className="p-3 border rounded-lg bg-card space-y-3">
+                <div className="text-xs font-semibold text-primary flex items-center gap-1">
                   <PackagePlus className="h-3.5 w-3.5" />
-                  บันทึกการเบิก
-                </Button>
-              </div>
-            </form>
+                  เพิ่มรายการเบิกอะไหล่ใหม่
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <Label className="text-xs">เลือกอะไหล่ในสต็อก / กรอกเอง</Label>
+                    <Select value={selectedPartId} onValueChange={handleSelectPart}>
+                      <SelectTrigger className="h-9 text-xs">
+                        <SelectValue placeholder="-- เลือกรายการอะไหล่ --" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {MOCK_SPARE_PARTS.map((part) => (
+                          <SelectItem key={part.part_id} value={part.part_id} className="text-xs">
+                            {part.name} (คงเหลือ: {part.stock} {part.unit} @฿{part.unit_price})
+                          </SelectItem>
+                        ))}
+                        <SelectItem value="custom" className="text-xs font-semibold text-primary">
+                          + ระบุรายการอะไหล่นอกคลัง (Custom)
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {selectedPartId === "custom" && (
+                    <div className="space-y-1">
+                      <Label className="text-xs">ชื่ออะไหล่ / อุปกรณ์</Label>
+                      <Input
+                        className="h-9 text-xs"
+                        placeholder="เช่น ซีลยางพิเศษ 45mm"
+                        value={customPartName}
+                        onChange={(e) => setCustomPartName(e.target.value)}
+                      />
+                    </div>
+                  )}
+
+                  <div className="grid grid-cols-3 gap-2">
+                    <div className="space-y-1">
+                      <Label className="text-xs">จำนวน</Label>
+                      <Input
+                        type="number"
+                        min={1}
+                        className="h-9 text-xs"
+                        value={quantity}
+                        onChange={(e) => setQuantity(Number(e.target.value))}
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <Label className="text-xs">หน่วย</Label>
+                      <Input
+                        className="h-9 text-xs"
+                        placeholder="ชิ้น/ชุด"
+                        value={unit}
+                        onChange={(e) => setUnit(e.target.value)}
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <Label className="text-xs">ราคา/หน่วย (บาท)</Label>
+                      <Input
+                        type="number"
+                        min={0}
+                        className="h-9 text-xs font-mono"
+                        value={unitPrice}
+                        onChange={(e) => setUnitPrice(Number(e.target.value))}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between pt-1">
+                  <div className="text-xs text-muted-foreground">
+                    ราคารวมรายการนี้: <span className="font-bold text-foreground font-mono">฿{(quantity * unitPrice).toLocaleString()}</span>
+                  </div>
+                  <Button type="submit" size="sm" variant="industrial" className="h-8 text-xs gap-1">
+                    <PackagePlus className="h-3.5 w-3.5" />
+                    บันทึกการเบิก
+                  </Button>
+                </div>
+              </form>
+            )}
 
             {/* List Table */}
             <div className="space-y-2">
@@ -337,3 +415,4 @@ export function StockRequisitionDialog({ request, open, onOpenChange }: Props) {
     </Dialog>
   );
 }
+
