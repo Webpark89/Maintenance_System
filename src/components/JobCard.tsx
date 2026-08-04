@@ -570,6 +570,9 @@ export function JobCard({
             <DialogTitle className="text-base font-bold text-rose-600">
               ปฏิเสธคำขอยกเลิกงาน ({request.request_id})
             </DialogTitle>
+            <DialogDescription className="text-xs">
+              ระบุเหตุผลเพื่อแจ้งให้ช่างซ่อมทราบถึงสาเหตุที่ไม่อนุมัติการยกเลิกใบแจ้งซ่อมนี้
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-3 py-2">
             <div className="space-y-1">

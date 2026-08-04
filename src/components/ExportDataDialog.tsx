@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -99,6 +99,9 @@ export function ExportDataDialog({ open, onOpenChange, requests }: ExportDataDia
             <FileSpreadsheet className="h-5 w-5 text-success" />
             ส่งออกข้อมูลใบแจ้งซ่อม (Export Excel / CSV)
           </DialogTitle>
+          <DialogDescription className="text-xs">
+            เลือกเงื่อนไขช่วงเวลาและสถานะเพื่อดาวน์โหลดรายงานใบแจ้งซ่อมเป็นไฟล์ CSV
+          </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 py-3 text-sm">

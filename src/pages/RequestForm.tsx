@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { PriorityBadge } from "@/components/PriorityBadge";
 import { StatusBadge } from "@/components/StatusBadge";
 import { AppLayout } from "@/components/AppLayout";
@@ -743,8 +743,8 @@ const RequestForm = () => {
                   </div>
                 )}
               </div>
-              <div className="flex justify-end">
-                <div className="flex items-center gap-2">
+              <div className="rounded-lg border border-border bg-muted/30 p-3 space-y-3">
+                <div className="grid grid-cols-2 gap-2">
                   <input
                     ref={qrImageInputRef}
                     type="file"
@@ -755,35 +755,37 @@ const RequestForm = () => {
                   <Button
                     type="button"
                     variant="outline"
-                    size="sm"
+                    className="w-full justify-center h-10 text-xs sm:text-sm font-medium bg-background hover:bg-accent hover:text-accent-foreground shadow-xs"
                     disabled={imageScanLoading}
                     onClick={() => qrImageInputRef.current?.click()}
                   >
-                    <ImagePlus className="h-4 w-4 mr-1" />
-                    {imageScanLoading ? "กำลังสแกนรูป..." : "เลือกรูปสแกน QR"}
+                    <ImagePlus className="h-4 w-4 mr-1.5 shrink-0 text-primary" />
+                    <span className="truncate">{imageScanLoading ? "กำลังสแกน..." : "เลือกรูป QR"}</span>
                   </Button>
                   <Button
                     type="button"
                     variant="outline"
-                    size="sm"
+                    className="w-full justify-center h-10 text-xs sm:text-sm font-medium bg-background hover:bg-accent hover:text-accent-foreground shadow-xs"
                     onClick={() => void openCameraScanner()}
                   >
-                    <Camera className="h-4 w-4 mr-1" />
-                    เปิดกล้องสแกน QR
+                    <Camera className="h-4 w-4 mr-1.5 shrink-0 text-primary" />
+                    <span className="truncate">เปิดกล้องสแกน</span>
                   </Button>
                 </div>
-              </div>
-              <div className="flex items-center justify-between rounded-md border border-border bg-muted/40 px-3 py-2">
-                <span className="text-xs text-muted-foreground">ไม่สะดวกสแกน? เปิดโหมดกรอกข้อมูลเครื่องจักรเอง</span>
-                <Button
-                  type="button"
-                  variant={manualEntry ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setManualEntry((prev) => !prev)}
-                >
-                  <PencilLine className="h-4 w-4 mr-1" />
-                  {manualEntry ? "ปิดกรอกเอง" : "กรอกเอง"}
-                </Button>
+
+                <div className="flex items-center justify-between pt-2 border-t border-border/60">
+                  <span className="text-xs text-muted-foreground">ไม่สะดวกสแกน? เปิดโหมดกรอกข้อมูลเอง</span>
+                  <Button
+                    type="button"
+                    variant={manualEntry ? "default" : "outline"}
+                    size="sm"
+                    className="h-8 text-xs shrink-0"
+                    onClick={() => setManualEntry((prev) => !prev)}
+                  >
+                    <PencilLine className="h-3.5 w-3.5 mr-1" />
+                    {manualEntry ? "ปิดกรอกเอง" : "กรอกเอง"}
+                  </Button>
+                </div>
               </div>
             </div>
 
@@ -1204,6 +1206,9 @@ const RequestForm = () => {
         <DialogContent className="max-w-2xl max-h-[80vh] overflow-hidden flex flex-col">
           <DialogHeader>
             <DialogTitle>ประวัติรายการที่ฉันแจ้ง</DialogTitle>
+            <DialogDescription className="text-xs">
+              รายการคำขอแจ้งซ่อมทั้งหมดที่คุณเคยแจ้งไว้ในระบบ
+            </DialogDescription>
           </DialogHeader>
 
           <div className="flex-1 overflow-y-auto pr-1 space-y-2">
@@ -1264,6 +1269,9 @@ const RequestForm = () => {
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>สแกน QR Code จากกล้อง</DialogTitle>
+            <DialogDescription className="text-xs">
+              หันกล้องไปที่ QR Code ของเครื่องจักรเพื่อทำการสแกนรหัสอัตโนมัติ
+            </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-3">

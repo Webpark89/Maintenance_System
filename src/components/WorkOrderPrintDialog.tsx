@@ -1,4 +1,4 @@
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { WorkRequest, CATEGORY_LABEL, PRIORITY_LABEL, STATUS_LABEL } from "@/lib/mockData";
 import { Printer, ShieldCheck, Wrench, Building, User, FileText, Package, AlertTriangle } from "lucide-react";
@@ -29,9 +29,14 @@ export function WorkOrderPrintDialog({ open, onOpenChange, request }: WorkOrderP
         <div className="flex items-center justify-between border-b pb-4 mb-4 print:hidden">
           <div className="flex items-center gap-2">
             <FileText className="h-5 w-5 text-sky-600" />
-            <DialogTitle className="text-lg font-bold text-slate-800">
-              พรีวิวใบสั่งซ่อมบำรุง (Work Order A4)
-            </DialogTitle>
+            <div>
+              <DialogTitle className="text-lg font-bold text-slate-800">
+                พรีวิวใบสั่งซ่อมบำรุง (Work Order A4)
+              </DialogTitle>
+              <DialogDescription className="sr-only">
+                พรีวิวเอกสารใบสั่งซ่อมบำรุงมาตรฐานขนาด A4 สำหรับพิมพ์หรือบันทึกเป็น PDF
+              </DialogDescription>
+            </div>
           </div>
           <div className="flex items-center gap-2">
             <Button onClick={handlePrint} className="bg-sky-600 hover:bg-sky-700 text-white gap-2">
