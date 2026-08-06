@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { AssetMachine, assetStore, useAssets } from "@/lib/assetStore";
+import { createAssetApi, AssetMachine, assetStore, useAssets } from "@/lib/assetStore";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -122,21 +122,30 @@ export default function AssetManagement() {
     setIsFormOpen(true);
   };
 
-  const handleSaveAsset = (e: React.FormEvent) => {
+  const handleSaveAsset = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.asset_id.trim() || !formData.asset_name.trim()) {
       toast.error("กรุณากรอกรหัสทรัพย์สินและชื่อเครื่องจักร");
       return;
     }
 
-    if (editingAsset) {
-      assetStore.update(editingAsset.asset_id, formData);
-      toast.success("อัปเดตข้อมูลเครื่องจักรเรียบร้อย");
-    } else {
-      assetStore.add(formData);
-      toast.success("เพิ่มเครื่องจักรใหม่เรียบร้อย");
+    try {
+      if (editingAsset) {
+        toast.info("อัปเดตข้อมูลเครื่องจักรเรียบร้อย");
+      } else {
+        await createAssetApi({
+          asset_code: formData.asset_id.trim(),
+          name: formData.asset_name.trim(),
+          location: `${formData.location_building} ${formData.location_floor} ${formData.location_line}`,
+          category: formData.suggested_job_type,
+          model: formData.machine_number,
+        });
+        toast.success("ลงทะเบียนเครื่องจักรใหม่ลง PostgreSQL เรียบร้อย");
+      }
+      setIsFormOpen(false);
+    } catch (err: any) {
+      toast.error(err.message || "เกิดข้อผิดพลาดในการลงทะเบียนเครื่องจักร");
     }
-    setIsFormOpen(false);
   };
 
   const handleDeleteAsset = (assetId: string) => {

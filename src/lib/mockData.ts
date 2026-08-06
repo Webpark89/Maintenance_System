@@ -204,6 +204,7 @@ export interface WorkRequest {
   reported_by_department?: string;
   category: WorkCategory;
   assigned_to?: string | null;
+  assigned_technician_name?: string | null;
   attachments: RequestAttachment[];
   request_details?: RequestDetails;
   assessment_report?: AssessmentReport;
@@ -476,7 +477,8 @@ export const TECHNICIAN_MAP: Record<string, Technician> = {
   },
 };
 
-export function getTechnicianName(technicianId: string | null | undefined): string {
+export function getTechnicianName(technicianId: string | null | undefined, fallbackName?: string | null): string {
+  if (fallbackName) return fallbackName;
   if (!technicianId) return "-";
   return TECHNICIAN_MAP[technicianId]?.name || technicianId;
 }

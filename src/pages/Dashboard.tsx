@@ -9,6 +9,7 @@ import { PriorityBadge } from "@/components/PriorityBadge";
 import { StatusBadge } from "@/components/StatusBadge";
 import { AppLayout } from "@/components/AppLayout";
 import { requestStore, useRequests } from "@/lib/requestStore";
+import { api } from "@/lib/api";
 import { CATEGORY_LABEL, STATUS_LABEL, PRIORITY_LABEL, WorkRequest } from "@/lib/mockData";
 import {
   BarChart,
@@ -164,6 +165,16 @@ export default function Dashboard() {
       priorityData,
     };
   }, [requests]);
+
+  // Fetch Real KPI Analytics from Backend API
+  const [apiKpi, setApiKpi] = useState<any>(null);
+  useState(() => {
+    api.get("/analytics/kpi").then((res) => {
+      if (res.data?.data) {
+        setApiKpi(res.data.data);
+      }
+    }).catch(() => {});
+  });
 
   const handleOpenPrint = (req: WorkRequest) => {
     setSelectedRequestForPrint(req);

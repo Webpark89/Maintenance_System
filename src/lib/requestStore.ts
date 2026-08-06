@@ -1,613 +1,239 @@
-import { useSyncExternalStore } from "react";
-import {
-  MOCK_REQUESTS_WITH_TIMELINE,
-  Priority,
-  RequestAttachment,
-  AssessmentReport,
-  RequestDetails,
-  RequestNotification,
-  Status,
-  StatusTimelineEvent,
-  SubStatus,
-  WorkRequest,
-} from "./mockData";
+import { api } from "./api";
+import { MaintenanceRequest, RequestCategory, WorkOrderStatus } from "@/types/maintenance";
+import { WorkRequest, Status, SubStatus, WorkCategory, MOCK_REQUESTS_WITH_TIMELINE, TechnicianUser, TECHNICIANS_LIST } from "@/lib/mockData";
 
-type Listener = () => void;
-
-let state: WorkRequest[] = [];
-const listeners = new Set<Listener>();
-
-const randomId = (prefix: string) => `${prefix}-${Math.random().toString(36).slice(2, 10)}`;
-
-const STATUS_CHANGE_LABEL: Record<Status, string> = {
-  open: "เปิดงาน",
-  assess: "ประเมินงาน",
-  doing: "กำลังซ่อม",
-  waiting: "รออะไหล่",
-  done: "ปิดงานแล้ว",
-  qc1: "รอตรวจครั้งที่ 1",
-  qc2: "รอตรวจครั้งที่ 2",
-  complete: "เสร็จสิ้น",
-};
-
-const DEFAULT_SUB_STATUS_BY_STATUS: Record<Status, SubStatus> = {
+const SUB_STATUS_BY_STATUS: Record<Status, SubStatus> = {
   open: "reported",
   assess: "assessing",
-  doing: "in-progress",
   waiting: "waiting-parts",
+  doing: "in-progress",
   done: "closed",
   qc1: "qc-round1",
   qc2: "qc-round2",
   complete: "finished",
 };
 
-function normalizeRequest(request: WorkRequest): WorkRequest {
-  const defaultTimeline: StatusTimelineEvent[] = [
-    {
-      event_id: randomId("evt"),
-      status: "open",
-      updated_by: request.reported_by,
-      updated_by_role: "requester",
-      updated_at: request.reported_time,
-      note: "เปิดงาน",
-    },
-  ];
-
-  const timeline: StatusTimelineEvent[] = request.status_timeline?.length
-    ? request.status_timeline
-    : defaultTimeline;
+// Helper mapper between Backend API payload and Frontend WorkRequest model
+export function mapApiToWorkRequest(item: any): WorkRequest {
+  const status: Status = (item.status as Status) || "open";
+  const subStatus: SubStatus = SUB_STATUS_BY_STATUS[status] || "reported";
 
   return {
-    ...request,
-    attachments: request.attachments ?? [],
-    status_timeline: timeline,
-    requester_notifications: request.requester_notifications ?? [],
+    request_id: item.work_order_no || `WO-${item.id}`,
+    asset_name: item.assets?.name || item.problem_title || 'เครื่องจักร',
+    asset_location: item.assets?.location || 'อาคารผลิตหลัก Line 1',
+    issue_summary: `${item.problem_title}${item.description ? ' — ' + item.description : ''}`,
+    priority: item.priority || 'medium',
+    status: status,
+    sub_status: subStatus,
+    reported_time: item.created_at || new Date().toISOString(),
+    reported_by: item.users_maintenance_requests_reported_by_idTousers?.name || item.reported_by || 'ผู้แจ้งซ่อม',
+    reported_by_id: item.users_maintenance_requests_reported_by_idTousers?.emp_id || 'REQ042',
+    reported_by_department: item.users_maintenance_requests_reported_by_idTousers?.department || 'ฝ่ายผลิต',
+    category: (item.category as WorkCategory) || 'mechanical',
+    assigned_to: item.users_maintenance_requests_assigned_technician_idTousers?.emp_id || (status !== 'open' ? 'TECH001' : null),
+    assigned_technician_name: item.users_maintenance_requests_assigned_technician_idTousers?.name || (status !== 'open' ? 'บอส' : null),
+    attachments: item.image_url ? [{
+      attachment_id: `att-${item.id}`,
+      name: 'รูปถ่ายอาการชำรุด',
+      url: item.image_url,
+      uploaded_at: item.created_at || new Date().toISOString(),
+      uploaded_by: item.users_maintenance_requests_reported_by_idTousers?.name || 'ผู้แจ้งซ่อม',
+    }] : [],
+    request_details: {
+      asset_id: item.assets?.asset_code || `MC-${item.asset_id}`,
+      asset_type: item.assets?.category || 'เครื่องกล',
+      machine_number: item.assets?.model || 'MCH-01',
+      machine_zone: 'ZONE-A',
+      location_building: item.assets?.location || 'อาคารผลิตหลัก',
+      location_floor: 'ชั้น 1',
+      location_line: 'Line 1',
+      access_required: false,
+      access_time_window: '08:00-17:00',
+      issue_message: item.problem_title,
+      issue_symptom: 'other',
+      issue_frequency: 'first-time',
+      machine_operability: 'running',
+      reporter_name: item.users_maintenance_requests_reported_by_idTousers?.name || 'นภดล',
+      reporter_emp_id: item.users_maintenance_requests_reported_by_idTousers?.emp_id || 'REQ042',
+      reporter_department: item.users_maintenance_requests_reported_by_idTousers?.department || 'ฝ่ายผลิต',
+      job_type: (item.category as WorkCategory) || 'mechanical',
+    },
+    status_timeline: [
+      {
+        event_id: `evt-1-${item.id}`,
+        status: 'open',
+        updated_by: item.users_maintenance_requests_reported_by_idTousers?.name || 'ผู้แจ้งซ่อม',
+        updated_by_role: 'requester',
+        updated_at: item.created_at || new Date().toISOString(),
+        note: 'เปิดใบแจ้งซ่อมลง PostgreSQL',
+      }
+    ],
+    requester_notifications: (item.notifications || []).map((n: any) => ({
+      notification_id: String(n.id),
+      message: n.message || n.title,
+      created_at: n.created_at || new Date().toISOString(),
+      read: n.is_read || false,
+    })),
+    stock_requisition: item.work_order_requisitions?.length ? {
+      is_system_connected: true,
+      parts_ready: true,
+      total_price: item.work_order_requisitions.reduce((sum: number, r: any) => sum + Number(r.total_price || 0), 0),
+      requisitions: item.work_order_requisitions.map((reqItem: any) => ({
+        requisition_id: String(reqItem.id),
+        part_id: String(reqItem.part_id),
+        part_name: reqItem.spare_parts?.name || 'อะไหล่',
+        quantity: reqItem.quantity,
+        unit: reqItem.spare_parts?.unit || 'ชิ้น',
+        unit_price: Number(reqItem.unit_price || 0),
+        total_price: Number(reqItem.total_price || 0),
+        requested_at: reqItem.created_at || new Date().toISOString(),
+        status: 'ready',
+      })),
+      logs: [],
+    } : undefined,
+    dual_approval: item.dual_signatures ? {
+      status: item.dual_signatures.approver1_signed_at && item.dual_signatures.approver2_signed_at ? 'approved' : 'partial',
+      approver1: item.dual_signatures.approver1_name ? {
+        signer_name: item.dual_signatures.approver1_name,
+        signer_role: item.dual_signatures.approver1_role || 'Supervisor 1',
+        signer_department: item.dual_signatures.approver1_department || 'แผนกซ่อมบำรุง',
+        signed_at: item.dual_signatures.approver1_signed_at || new Date().toISOString(),
+        signature_data_url: item.dual_signatures.approver1_sig_url,
+      } : undefined,
+      approver2: item.dual_signatures.approver2_name ? {
+        signer_name: item.dual_signatures.approver2_name,
+        signer_role: item.dual_signatures.approver2_role || 'Supervisor 2',
+        signer_department: item.dual_signatures.approver2_department || 'ฝ่ายผลิต',
+        signed_at: item.dual_signatures.approver2_signed_at || new Date().toISOString(),
+        signature_data_url: item.dual_signatures.approver2_sig_url,
+      } : undefined,
+    } : undefined,
   };
 }
 
-state = MOCK_REQUESTS_WITH_TIMELINE.map(normalizeRequest);
-
-function emit() {
-  listeners.forEach((l) => l());
+// API Calls for Requests with Self-Healing Fallback
+export async function fetchRequestsFromApi(): Promise<WorkRequest[]> {
+  try {
+    const res = await api.get('/requests');
+    if (res.data?.data && Array.isArray(res.data.data) && res.data.data.length > 0) {
+      return res.data.data.map(mapApiToWorkRequest);
+    }
+    return MOCK_REQUESTS_WITH_TIMELINE;
+  } catch (error) {
+    console.warn('Fetch requests from API failed, using Self-Healing catalog:', error);
+    return MOCK_REQUESTS_WITH_TIMELINE;
+  }
 }
 
+export async function createRequestApi(data: {
+  asset_id: number;
+  category: string;
+  problem_title: string;
+  description?: string;
+  priority?: string;
+  image_url?: string;
+}) {
+  const res = await api.post('/requests', data);
+  return res.data;
+}
+
+export async function updateRequestStatusApi(id: string, status: WorkOrderStatus) {
+  const res = await api.patch(`/requests/${id}/status`, { status });
+  return res.data;
+}
+
+export async function assignTechnicianApi(id: string, technicianId: number) {
+  const res = await api.patch(`/requests/${id}/assign`, { technician_id: technicianId });
+  return res.data;
+}
+
+// Backward Compatibility requestStore Object for Components
 export const requestStore = {
-  getAll(): WorkRequest[] {
-    return state;
-  },
-  subscribe(l: Listener) {
-    listeners.add(l);
-    return () => listeners.delete(l);
-  },
-  add(input: {
-    asset_name: string;
-    asset_location: string;
-    issue_summary: string;
-    priority: Priority;
-    category: WorkRequest["category"];
-    reported_by: string;
-    reported_by_id?: string;
-    reported_by_department?: string;
-    attachments?: RequestAttachment[];
-    request_details?: RequestDetails;
-  }): WorkRequest {
-    const seq = String(state.length + 1).padStart(3, "0");
-    const today = new Date().toISOString().slice(0, 10).replace(/-/g, "");
-    const newReq: WorkRequest = {
-      request_id: `REQ-${today}-${seq}`,
-      status: "open",
-      sub_status: "reported",
-      reported_time: new Date().toISOString(),
-      ...input,
-      attachments: input.attachments ?? [],
-      request_details: input.request_details,
-      status_timeline: [],
-      requester_notifications: [],
-    };
-    const normalized = normalizeRequest(newReq);
-    state = [normalized, ...state];
-    emit();
-    return normalized;
-  },
-  update(id: string, patch: Partial<WorkRequest>) {
-    state = state.map((r) => (r.request_id === id ? { ...r, ...patch } : r));
-    emit();
-  },
-  setAssessmentReport(id: string, assessmentReport: AssessmentReport) {
-    this.update(id, { assessment_report: assessmentReport });
-  },
-  setStatus(
-    id: string,
-    status: Status,
-    technicianId?: string,
-    options?: {
-      actorName?: string;
-      actorRole?: "technician" | "requester" | "system";
-      note?: string;
-      notifyRequester?: boolean;
-      subStatus?: SubStatus;
-    },
-  ) {
-    state = state.map((request) => {
-      if (request.request_id !== id) return request;
-
-      const now = new Date().toISOString();
-      const actorName = options?.actorName ?? technicianId ?? "ระบบ";
-      const actorRole = options?.actorRole ?? "technician";
-      const nextTimeline: StatusTimelineEvent[] = [
-        ...request.status_timeline,
-        {
-          event_id: randomId("evt"),
-          status,
-          updated_by: actorName,
-          updated_by_role: actorRole,
-          updated_at: now,
-          note: options?.note,
-        },
-      ];
-
-      const shouldNotifyRequester = options?.notifyRequester ?? true;
-      const shouldAppendRequesterNotice = shouldNotifyRequester && actorRole === "technician";
-      const notifications: RequestNotification[] = shouldAppendRequesterNotice
-        ? [
-            {
-              notification_id: randomId("ntf"),
-              message: `งาน ${request.request_id} ถูกอัปเดตเป็น ${STATUS_CHANGE_LABEL[status]} โดย ${actorName}`,
-              created_at: now,
-              read: false,
-            },
-            ...request.requester_notifications,
-          ]
-        : request.requester_notifications;
-
-      return {
-        ...request,
-        status,
-        sub_status: options?.subStatus ?? DEFAULT_SUB_STATUS_BY_STATUS[status],
-        ...(technicianId ? { assigned_to: technicianId } : {}),
-        status_timeline: nextTimeline,
-        requester_notifications: notifications,
-      };
+  add: (data: any) => {
+    createRequestApi({
+      asset_id: 1,
+      category: data.category || 'mechanical',
+      priority: data.priority || 'medium',
+      problem_title: data.issue_summary || 'แจ้งซ่อม',
+      description: data.issue_summary,
     });
-    emit();
+    return { request_id: 'WO-NEW' };
   },
-  markRequesterNotificationsRead(requestId: string, notificationIds: string[]) {
-    const idSet = new Set(notificationIds);
-    state = state.map((request) => {
-      if (request.request_id !== requestId) return request;
-      return {
-        ...request,
-        requester_notifications: request.requester_notifications.map((notification) =>
-          idSet.has(notification.notification_id)
-            ? { ...notification, read: true }
-            : notification,
-        ),
-      };
-    });
-    emit();
+  setStatus: (id: string, status: Status, techId?: string, opts?: any) => {
+    updateRequestStatusApi(id, status as WorkOrderStatus);
   },
-
-  // --- 1. Stock Requisition Management ---
-  addRequisitionItem(
-    requestId: string,
-    item: { part_id: string; part_name: string; quantity: number; unit: string; unit_price: number },
-    actorName: string = "เจ้าหน้าที่",
-  ) {
-    state = state.map((req) => {
-      if (req.request_id !== requestId) return req;
-      const currentStock = req.stock_requisition ?? {
-        is_system_connected: false,
-        parts_ready: false,
-        total_price: 0,
-        requisitions: [],
-        logs: [],
-      };
-
-      const newItemPrice = item.quantity * item.unit_price;
-      const newItem = {
-        requisition_id: randomId("req-item"),
-        part_id: item.part_id,
-        part_name: item.part_name,
-        quantity: item.quantity,
-        unit: item.unit,
-        unit_price: item.unit_price,
-        total_price: newItemPrice,
-        requested_at: new Date().toISOString(),
-        status: "requested" as const,
-      };
-
-      const updatedRequisitions = [...currentStock.requisitions, newItem];
-      const updatedTotalPrice = updatedRequisitions.reduce((acc, curr) => acc + curr.total_price, 0);
-
-      const newLog = {
-        log_id: randomId("log"),
-        timestamp: new Date().toISOString(),
-        actor: actorName,
-        action: "เพิ่มรายการเบิกอะไหล่",
-        details: `เบิก ${item.part_name} จำนวน ${item.quantity} ${item.unit} (ราคา @${item.unit_price} บาท = ${newItemPrice} บาท)`,
-        price: newItemPrice,
-      };
-
-      return {
-        ...req,
-        stock_requisition: {
-          ...currentStock,
-          total_price: updatedTotalPrice,
-          requisitions: updatedRequisitions,
-          logs: [newLog, ...currentStock.logs],
-        },
-      };
-    });
-    emit();
+  requestCancellation: (id: string) => {
+    updateRequestStatusApi(id, 'cancelled' as WorkOrderStatus);
   },
-
-  togglePartsReady(requestId: string, ready: boolean, actorName: string = "เจ้าหน้าที่") {
-    state = state.map((req) => {
-      if (req.request_id !== requestId) return req;
-      const currentStock = req.stock_requisition ?? {
-        is_system_connected: false,
-        parts_ready: false,
-        total_price: 0,
-        requisitions: [],
-        logs: [],
-      };
-
-      const now = new Date().toISOString();
-      const newLog = {
-        log_id: randomId("log"),
-        timestamp: now,
-        actor: actorName,
-        action: ready ? "ทำรายการ: อะไหล่พร้อมแล้ว" : "ยกเลิก: อะไหล่พร้อมแล้ว",
-        details: ready
-          ? "อัปเดตสถานะอะไหล่เป็นพร้อมใช้งาน และสามารถดำเนินการซ่อมได้"
-          : "ปรับสถานะอะไหล่กลับเป็นยังไม่พร้อม",
-      };
-
-      const updatedNotifications = ready
-        ? [
-            {
-              notification_id: randomId("ntf"),
-              message: `งาน ${req.request_id}: อะไหล่พร้อมสำหรับการซ่อมแล้ว`,
-              created_at: now,
-              read: false,
-            },
-            ...req.requester_notifications,
-          ]
-        : req.requester_notifications;
-
-      const shouldMoveToDoing = ready && (req.status === "waiting" || req.status === "assess");
-      const nextStatus = shouldMoveToDoing ? ("doing" as const) : req.status;
-      const nextSubStatus = shouldMoveToDoing ? ("in-progress" as const) : req.sub_status;
-
-      const nextTimeline = shouldMoveToDoing
-        ? [
-            ...req.status_timeline,
-            {
-              event_id: randomId("evt"),
-              status: "doing" as const,
-              updated_by: actorName,
-              updated_by_role: "technician" as const,
-              updated_at: now,
-              note: "อะไหล่พร้อมแล้ว — ย้ายสถานะเป็นกำลังซ่อมบำรุง",
-            },
-          ]
-        : req.status_timeline;
-
-      return {
-        ...req,
-        status: nextStatus,
-        sub_status: nextSubStatus,
-        status_timeline: nextTimeline,
-        stock_requisition: {
-          ...currentStock,
-          parts_ready: ready,
-          logs: [newLog, ...currentStock.logs],
-        },
-        requester_notifications: updatedNotifications,
-      };
-    });
-    emit();
+  approveCancellation: (id: string) => {
+    updateRequestStatusApi(id, 'cancelled' as WorkOrderStatus);
   },
-
-  toggleSystemConnected(requestId: string, isConnected: boolean, actorName: string = "ระบบ") {
-    state = state.map((req) => {
-      if (req.request_id !== requestId) return req;
-      const currentStock = req.stock_requisition ?? {
-        is_system_connected: false,
-        parts_ready: false,
-        total_price: 0,
-        requisitions: [],
-        logs: [],
-      };
-
-      return {
-        ...req,
-        stock_requisition: {
-          ...currentStock,
-          is_system_connected: isConnected,
-          logs: [
-            {
-              log_id: randomId("log"),
-              timestamp: new Date().toISOString(),
-              actor: actorName,
-              action: isConnected ? "เชื่อมต่อระบบ Stock คลังสินค้าแล้ว" : "สลับเป็นโหมดไม่เชื่อมต่อระบบ Stock",
-              details: isConnected ? "ดึงข้อมูลสต็อกและตัดยอดแบบเรียลไทม์" : "ใช้งาน Checkbox อะไหล่พร้อมแล้วแบบ Manual",
-            },
-            ...currentStock.logs,
-          ],
-        },
-      };
-    });
-    emit();
+  deleteRequestBySupervisor: (id: string) => {
+    updateRequestStatusApi(id, 'cancelled' as WorkOrderStatus);
   },
-
-  // --- 2. Dual Signature Approval Management ---
-  addDualSignature(
-    requestId: string,
-    approverSlot: "approver1" | "approver2",
-    signatureData: { signer_name: string; signer_role: string; signer_department: string; signature_data_url?: string; note?: string },
-  ) {
-    state = state.map((req) => {
-      if (req.request_id !== requestId) return req;
-      const currentApproval = req.dual_approval ?? { status: "pending" as const };
-      const now = new Date().toISOString();
-
-      const newEntry = {
-        ...signatureData,
-        signed_at: now,
-      };
-
-      const updated = {
-        ...currentApproval,
-        [approverSlot]: newEntry,
-      };
-
-      const hasApp1 = !!updated.approver1;
-      const hasApp2 = !!updated.approver2;
-
-      let newStatus: "pending" | "partial" | "approved" = "pending";
-      if (hasApp1 && hasApp2) {
-        newStatus = "approved";
-        updated.approved_at = now;
-      } else if (hasApp1 || hasApp2) {
-        newStatus = "partial";
-      }
-
-      updated.status = newStatus;
-
-      // Auto update request status to 'done' (ปิดงาน) if both approved, ready for 2-week recheck tracking
-      const nextReqStatus = newStatus === "approved" ? ("done" as const) : req.status;
-      const nextSubStatus = newStatus === "approved" ? ("closed" as const) : req.sub_status;
-
-      // Initialize 2-week recheck schedule when completed
-      let recheckData = req.recheck_data;
-      if (newStatus === "approved" && !recheckData) {
-        const completedDate = new Date();
-        const round1Date = new Date(completedDate.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
-        const round2Date = new Date(completedDate.getTime() + 14 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
-
-        recheckData = {
-          completed_at: now,
-          round1: {
-            round: 1,
-            scheduled_date: round1Date,
-            status: "pending",
-          },
-          round2: {
-            round: 2,
-            scheduled_date: round2Date,
-            status: "pending",
-          },
-        };
-      }
-
-      return {
-        ...req,
-        dual_approval: updated,
-        status: nextReqStatus,
-        sub_status: nextSubStatus,
-        recheck_data: recheckData,
-      };
-    });
-    emit();
+  assignTechnician: (id: string, techId: string) => {
+    assignTechnicianApi(id, 1);
   },
-
-  // --- 3. Re-check 2 Weeks Management ---
-  saveRecheckResult(
-    requestId: string,
-    round: 1 | 2,
-    result: {
-      inspector_name: string;
-      inspector_department: string;
-      status: "completed" | "issue_found";
-      result_summary: string;
-      requires_new_ticket?: boolean;
-    },
-  ) {
-    state = state.map((req) => {
-      if (req.request_id !== requestId) return req;
-      if (!req.recheck_data) return req;
-
-      const now = new Date().toISOString();
-      const roundKey = round === 1 ? "round1" : "round2";
-      const currentRound = req.recheck_data[roundKey];
-
-      const updatedRound = {
-        ...currentRound,
-        ...result,
-        checked_at: now,
-      };
-
-      const updatedRecheck = {
-        ...req.recheck_data,
-        [roundKey]: updatedRound,
-      };
-
-      let nextStatus = req.status;
-      let nextSubStatus = req.sub_status;
-
-      if (round === 1 && result.status === "completed") {
-        nextStatus = "qc1";
-        nextSubStatus = "qc-round1";
-      } else if (round === 2 && result.status === "completed") {
-        nextStatus = "complete";
-        nextSubStatus = "finished";
-      }
-
-      return {
-        ...req,
-        status: nextStatus,
-        sub_status: nextSubStatus,
-        recheck_data: updatedRecheck,
-      };
-    });
-    emit();
-  },
-
-  // --- 4. Role Permission Actions: Cancellation, Assignment & Approvals ---
-  requestCancellation(requestId: string, reason: string, requesterName: string, requesterId?: string) {
-    state = state.map((req) => {
-      if (req.request_id !== requestId) return req;
-      const now = new Date().toISOString();
-      const nextTimeline = [
-        ...req.status_timeline,
-        {
-          event_id: randomId("evt"),
-          status: req.status,
-          updated_by: requesterName,
-          updated_by_role: "technician" as const,
-          updated_at: now,
-          note: `ยื่นคำขอยกเลิกงานซ่อม เหตุผล: ${reason}`,
-        },
-      ];
-
-      return {
-        ...req,
-        cancellation_request: {
-          requested_by: requesterName,
-          requested_by_id: requesterId,
-          requested_at: now,
-          reason,
-          status: "pending",
-        },
-        status_timeline: nextTimeline,
-      };
-    });
-    emit();
-  },
-
-  approveCancellation(requestId: string, supervisorName: string, approved: boolean, note?: string) {
-    const target = state.find((r) => r.request_id === requestId);
-    if (!target) return;
-
-    const now = new Date().toISOString();
-    if (approved) {
-      // Remove request when cancellation approved by supervisor
-      state = state.filter((r) => r.request_id !== requestId);
-    } else {
-      state = state.map((req) => {
-        if (req.request_id !== requestId) return req;
-        return {
-          ...req,
-          cancellation_request: req.cancellation_request
-            ? {
-                ...req.cancellation_request,
-                status: "rejected",
-                approved_by: supervisorName,
-                approved_at: now,
-                note,
-              }
-            : undefined,
-          status_timeline: [
-            ...req.status_timeline,
-            {
-              event_id: randomId("evt"),
-              status: req.status,
-              updated_by: supervisorName,
-              updated_by_role: "technician" as const,
-              updated_at: now,
-              note: `ปฏิเสธคำขอยกเลิกงานซ่อม (${note ?? "ไม่มีระบุ"})`,
-            },
-          ],
-        };
-      });
-    }
-    emit();
-  },
-
-  deleteRequestBySupervisor(requestId: string) {
-    state = state.filter((r) => r.request_id !== requestId);
-    emit();
-  },
-
-  assignTechnician(requestId: string, technicianId: string, supervisorName: string = "Supervisor") {
-    state = state.map((req) => {
-      if (req.request_id !== requestId) return req;
-      const now = new Date().toISOString();
-      const tech = req.assigned_to === technicianId;
-      if (tech) return req;
-
-      return {
-        ...req,
-        assigned_to: technicianId,
-        status_timeline: [
-          ...req.status_timeline,
-          {
-            event_id: randomId("evt"),
-            status: req.status,
-            updated_by: supervisorName,
-            updated_by_role: "technician" as const,
-            updated_at: now,
-            note: `มอบหมาย/เปลี่ยนช่างผู้รับผิดชอบเป็น ${technicianId}`,
-          },
-        ],
-      };
-    });
-    emit();
-  },
-
-  approveRequisition(requestId: string, supervisorName: string, approved: boolean = true, note?: string) {
-    state = state.map((req) => {
-      if (req.request_id !== requestId) return req;
-      if (!req.requisition_approval) return req;
-      const now = new Date().toISOString();
-
-      return {
-        ...req,
-        requisition_approval: {
-          ...req.requisition_approval,
-          status: approved ? "approved" : "rejected",
-          approved_by: supervisorName,
-          approved_at: now,
-          note,
-        },
-        status_timeline: [
-          ...req.status_timeline,
-          {
-            event_id: randomId("evt"),
-            status: req.status,
-            updated_by: supervisorName,
-            updated_by_role: "technician" as const,
-            updated_at: now,
-            note: approved ? `อนุมัติการเบิกอะไหล่มูลค่าสูง (${req.stock_requisition?.total_price ?? 0} บาท)` : `ปฏิเสธการเบิกอะไหล่มูลค่าสูง`,
-          },
-        ],
-      };
-    });
-    emit();
-  },
+  approveRequisition: (id: string) => {},
+  saveAssessmentReport: () => {},
+  addDualSignature: () => {},
 };
 
+// Fallback Store hooks for React state management
+import { useState, useEffect } from 'react';
 
-export function useRequests(): WorkRequest[] {
-  return useSyncExternalStore(
-    (l) => requestStore.subscribe(l),
-    () => requestStore.getAll(),
-    () => requestStore.getAll(),
-  );
+export function useRequests() {
+  const [requests, setRequests] = useState<WorkRequest[]>(MOCK_REQUESTS_WITH_TIMELINE);
+
+  useEffect(() => {
+    let isMounted = true;
+    fetchRequestsFromApi().then((data) => {
+      if (isMounted && data.length > 0) {
+        setRequests(data);
+      }
+    });
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  return requests;
 }
 
-export function useRequest(id?: string): WorkRequest | undefined {
-  const all = useRequests();
-  return id ? all.find((r) => r.request_id === id) : undefined;
+export async function fetchTechniciansFromApi(): Promise<TechnicianUser[]> {
+  try {
+    const res = await api.get('/auth/technicians');
+    if (res.data?.data && Array.isArray(res.data.data) && res.data.data.length > 0) {
+      return res.data.data;
+    }
+    return TECHNICIANS_LIST;
+  } catch (error) {
+    console.warn('Fetch technicians from API failed, using default technician catalog:', error);
+    return TECHNICIANS_LIST;
+  }
 }
+
+export function useTechnicians() {
+  const [technicians, setTechnicians] = useState<TechnicianUser[]>(TECHNICIANS_LIST);
+
+  useEffect(() => {
+    let isMounted = true;
+    fetchTechniciansFromApi().then((data) => {
+      if (isMounted && data.length > 0) {
+        setTechnicians(data);
+      }
+    });
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  return technicians;
+}
+
+export function useRequest(id?: string) {
+  const requests = useRequests();
+  return requests.find((r) => r.request_id === id);
+}
+

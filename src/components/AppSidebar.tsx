@@ -24,7 +24,7 @@ import {
   User,
 } from "lucide-react";
 import { useRequests } from "@/lib/requestStore";
-import { getCurrentUser, getUserDefaultRoute } from "@/lib/auth";
+import { getCurrentUser, getUserDefaultRoute, refreshCurrentUserFromApi, UserPayload } from "@/lib/auth";
 
 const FALLBACK_REQUESTER_NAME = "นภดล ฝ่ายผลิต";
 const normalizeName = (name: string) => name.toLowerCase().replace(/[^\p{L}\p{N}]/gu, "");
@@ -35,7 +35,14 @@ export function AppSidebar() {
   const allRequests = useRequests();
   const { isMobile, setOpenMobile } = useSidebar();
 
-  const user = useMemo(() => getCurrentUser(), []);
+  const [user, setUser] = React.useState<UserPayload | null>(() => getCurrentUser());
+
+  React.useEffect(() => {
+    refreshCurrentUserFromApi().then((updated) => {
+      if (updated) setUser(updated);
+    });
+  }, [location.pathname]);
+
   const userRole = user?.role || "technician";
   const currentUserName = user?.name || FALLBACK_REQUESTER_NAME;
   const currentUserId = user?.emp_id || "REQ042";

@@ -15,7 +15,7 @@ import { WorkOrderPrintDialog } from "@/components/WorkOrderPrintDialog";
 import { ExportDataDialog } from "@/components/ExportDataDialog";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { AppLayout } from "@/components/AppLayout";
-import { requestStore, useRequests } from "@/lib/requestStore";
+import { updateRequestStatusApi, requestStore, useRequests } from "@/lib/requestStore";
 import {
   CATEGORY_LABEL,
   PRIORITY_RANK,
@@ -28,7 +28,8 @@ import {
 } from "@/lib/mockData";
 import { cn } from "@/lib/utils";
 
-const TECHNICIAN_NAME = "สมศักดิ์ ช่างไฟ";
+import { getCurrentUser } from "@/lib/auth";
+
 const STATUS_COLUMNS: { key: Status; title: string; accent: string }[] = [
   { key: "open", title: "เปิดงาน", accent: "border-status-new" },
   { key: "assess", title: "ประเมินงาน", accent: "border-warning" },
@@ -82,7 +83,9 @@ export default function TechnicianBoard() {
   const isPanningRef = useRef(false);
   const panStartXRef = useRef(0);
   const panStartScrollLeftRef = useRef(0);
-  const currentTech = (JSON.parse(sessionStorage.getItem("fixflow_user") ?? "{}") as { emp_id?: string }).emp_id || "TECH001";
+  const currentUser = getCurrentUser();
+  const currentTech = currentUser?.emp_id || "TECH001";
+  const technicianName = currentUser?.name || "ช่างซ่อมบำรุง";
   const [search, setSearch] = useState("");
   const [priorityFilter, setPriorityFilter] = useState<"all" | WorkRequest["priority"]>("all");
   const [categoryFilter, setCategoryFilter] = useState<"all" | WorkRequest["category"]>("all");
@@ -117,6 +120,41 @@ export default function TechnicianBoard() {
   const [printRequest, setPrintRequest] = useState<WorkRequest | null>(null);
   const [isPrintOpen, setIsPrintOpen] = useState(false);
   const [isExportOpen, setIsExportOpen] = useState(false);
+
+  const prevRequestCountRef = useRef(requests.length);
+
+  // Listen for real-time new requests cross-window
+  useEffect(() => {
+    const handleNewRequest = (e: Event) => {
+      const customEvent = e as CustomEvent<WorkRequest>;
+      const newReq = customEvent.detail;
+      if (newReq) {
+        toast.info(`🔔 มีงานแจ้งซ่อมใหม่: ${newReq.request_id}`, {
+          description: `${newReq.asset_name} — ${newReq.issue_summary} (${newReq.reported_by})`,
+          duration: 7000,
+        });
+      }
+    };
+
+    window.addEventListener("fixflow_new_request", handleNewRequest);
+    return () => {
+      window.removeEventListener("fixflow_new_request", handleNewRequest);
+    };
+  }, []);
+
+  // Secondary check if request length increased cross-tab
+  useEffect(() => {
+    if (requests.length > prevRequestCountRef.current) {
+      const newest = requests[0];
+      if (newest && newest.status === "open") {
+        toast.info(`🔔 งานซ่อมเข้ามาใหม่: ${newest.request_id}`, {
+          description: `${newest.asset_name} - ${newest.issue_summary}`,
+          duration: 6000,
+        });
+      }
+    }
+    prevRequestCountRef.current = requests.length;
+  }, [requests]);
 
   const stockRequest = useMemo(() => requests.find((r) => r.request_id === stockReqId), [requests, stockReqId]);
   const dualSigRequest = useMemo(() => requests.find((r) => r.request_id === dualSigReqId), [requests, dualSigReqId]);
@@ -169,14 +207,13 @@ export default function TechnicianBoard() {
     setTimeout(() => navigate(`/assessment/${id}`), 350);
   };
 
-  const handleChangeStatus = (id: string, status: Status, actionLabel: string) => {
-    requestStore.setStatus(id, status, currentTech, {
-      actorName: TECHNICIAN_NAME,
-      note: `อัปเดตเป็น ${STATUS_LABEL[status]} ผ่าน Technician Board`,
-      notifyRequester: true,
-      subStatus: SUB_STATUS_BY_STATUS[status],
-    });
-    toast.success(`อัปเดตสถานะเป็น ${actionLabel}`);
+  const handleChangeStatus = async (id: string, status: Status, actionLabel: string) => {
+    try {
+      await updateRequestStatusApi(id, status);
+      toast.success(`อัปเดตสถานะเป็น ${actionLabel} ลง PostgreSQL สำเร็จ`);
+    } catch (err: any) {
+      toast.error(err.message || "อัปเดตสถานะล้มเหลว");
+    }
   };
 
   const handleDragStart = (requestId: string) => {
@@ -292,7 +329,7 @@ export default function TechnicianBoard() {
   return (
     <AppLayout
       title="TECHNICIAN BOARD"
-      subtitle="สมศักดิ์ ช่างไฟ · TECH001"
+      subtitle={`${technicianName} · ${currentTech}`}
       actions={
         <Button
           variant="outline"

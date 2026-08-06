@@ -114,3 +114,29 @@ export async function logout(req: Request, res: Response) {
   res.clearCookie('token');
   return res.json({ success: true, message: 'ออกจากระบบสำเร็จ' });
 }
+
+export async function getTechnicians(req: Request, res: Response) {
+  try {
+    const technicians = await prisma.users.findMany({
+      where: { role: 'technician' },
+      include: { departments: true },
+      orderBy: { id: 'asc' },
+    });
+
+    const data = technicians.map((tech) => ({
+      emp_id: tech.emp_id,
+      name: tech.name,
+      department: tech.departments?.dept_name || 'แผนกซ่อมบำรุง',
+      skills: tech.skills || [],
+    }));
+
+    return res.json({
+      success: true,
+      data,
+    });
+  } catch (error: any) {
+    console.error('Error fetching technicians:', error);
+    return res.status(500).json({ success: false, message: 'ไม่สามารถดึงข้อมูลรายชื่อช่างได้' });
+  }
+}
+

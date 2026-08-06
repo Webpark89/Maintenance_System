@@ -1,3 +1,5 @@
+import { api } from "./api";
+
 export type UserRole = "technician" | "requester" | "supervisor";
 
 export interface UserPayload {
@@ -6,6 +8,7 @@ export interface UserPayload {
   role: UserRole;
   department: string;
   skills: string[];
+  token?: string;
 }
 
 export function getCurrentUser(): UserPayload | null {
@@ -16,6 +19,31 @@ export function getCurrentUser(): UserPayload | null {
   } catch {
     return null;
   }
+}
+
+export async function refreshCurrentUserFromApi(): Promise<UserPayload | null> {
+  const current = getCurrentUser();
+  if (!current || !current.token) return current;
+
+  try {
+    const res = await api.get("/auth/me");
+    if (res.data?.data) {
+      const user = res.data.data;
+      const updatedPayload: UserPayload = {
+        emp_id: user.emp_id,
+        name: user.name,
+        role: user.role as UserRole,
+        department: user.department,
+        skills: user.skills || [],
+        token: current.token,
+      };
+      sessionStorage.setItem("fixflow_user", JSON.stringify(updatedPayload));
+      return updatedPayload;
+    }
+  } catch (error) {
+    console.warn("Refresh user profile from DB failed:", error);
+  }
+  return current;
 }
 
 export function getUserRole(): UserRole | null {

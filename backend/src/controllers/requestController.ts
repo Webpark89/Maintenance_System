@@ -1,6 +1,7 @@
 import { Response } from 'express';
 import { prisma } from '../config/db.js';
 import { AuthenticatedRequest } from '../middlewares/authMiddleware.js';
+import { sendNotification } from '../services/socketService.js';
 
 // Status transition rule constraint map
 const VALID_TRANSITIONS: Record<string, string[]> = {
@@ -11,6 +12,16 @@ const VALID_TRANSITIONS: Record<string, string[]> = {
   done: ['complete', 'cancelled'],
   complete: [],
   cancelled: [],
+};
+
+const STATUS_TEXT_MAP: Record<string, string> = {
+  open: 'แจ้งซ่อมใหม่ (Open)',
+  assess: 'กำลังประเมินอาการ (Assess)',
+  waiting: 'รออะไหล่/รออนุมัติ (Waiting)',
+  doing: 'กำลังดำเนินการซ่อม (Doing)',
+  done: 'ซ่อมเสร็จสิ้น รอ QC (Done)',
+  complete: 'เสร็จสมบูรณ์ ปิดใบงาน (Complete)',
+  cancelled: 'ยกเลิกงานซ่อม (Cancelled)',
 };
 
 export async function getAllRequests(req: AuthenticatedRequest, res: Response) {
@@ -73,12 +84,26 @@ export async function createRequest(req: AuthenticatedRequest, res: Response) {
         description: description ? String(description).trim() : null,
         image_url: image_url ? String(image_url).trim() : null,
       },
+      include: {
+        assets: true,
+      },
     });
 
     // Update Asset status to breakdown
     await prisma.assets.update({
       where: { id: Number(asset_id) },
       data: { status: 'breakdown' },
+    });
+
+    // Push Real-time Socket Notification to Technicians & Supervisor
+    await sendNotification({
+      userId: null,
+      requestId: newRequest.id,
+      title: `🔔 มีใบแจ้งซ่อมใหม่ (${workOrderNo})`,
+      message: `ปัญหา: ${problem_title} (เครื่องจักร: ${newRequest.assets?.name || 'ไม่ระบุ'})`,
+      targetRoom: 'room:technicians',
+      eventType: 'new_request',
+      payloadData: newRequest,
     });
 
     return res.status(201).json({ success: true, message: 'สร้างใบแจ้งซ่อมสำเร็จ', data: newRequest });
@@ -95,6 +120,7 @@ export async function updateRequestStatus(req: AuthenticatedRequest, res: Respon
 
     const request = await prisma.maintenance_requests.findUnique({
       where: { id: Number(id) },
+      include: { assets: true },
     });
 
     if (!request) {
@@ -124,6 +150,20 @@ export async function updateRequestStatus(req: AuthenticatedRequest, res: Respon
       data: updateData,
     });
 
+    const statusTitle = STATUS_TEXT_MAP[status] || status;
+
+    // Push Real-time Socket Notification to Request Reporter
+    if (request.reported_by_id) {
+      await sendNotification({
+        userId: request.reported_by_id,
+        requestId: request.id,
+        title: `📌 อัปเดตสถานะงานซ่อม (${request.work_order_no})`,
+        message: `งานซ่อมของคุณเปลี่ยนสถานะเป็น: ${statusTitle}`,
+        eventType: 'request_updated',
+        payloadData: updated,
+      });
+    }
+
     return res.json({ success: true, message: `อัปเดตสถานะงานซ่อมเป็น ${status} สำเร็จ`, data: updated });
   } catch (error) {
     return res.status(500).json({ success: false, message: 'Failed to update request status' });
@@ -142,6 +182,16 @@ export async function assignTechnician(req: AuthenticatedRequest, res: Response)
     const updated = await prisma.maintenance_requests.update({
       where: { id: Number(id) },
       data: { assigned_technician_id: Number(technician_id) },
+    });
+
+    // Notify assigned technician
+    await sendNotification({
+      userId: Number(technician_id),
+      requestId: updated.id,
+      title: `🛠️ คุณได้รับมอบหมายงานซ่อมใหม่ (${updated.work_order_no})`,
+      message: `งานซ่อม: ${updated.problem_title}`,
+      eventType: 'task_assigned',
+      payloadData: updated,
     });
 
     return res.json({ success: true, message: 'มอบหมายช่างซ่อมสำเร็จ', data: updated });

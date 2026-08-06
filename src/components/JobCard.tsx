@@ -7,7 +7,7 @@ import { CATEGORY_LABEL, Status, timeAgo, WorkRequest, getTechnicianName, getTec
 import { Clock, MapPin, User, Zap, Wrench, Building2, Droplets, Cpu, Paperclip, Gauge, Waves, CircleHelp, ShoppingCart, FileCheck2, CalendarCheck2, ChevronDown, ChevronUp, Eye, Printer, Lock, AlertTriangle, UserCheck, Trash2, CheckCircle2, XCircle, Ban } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getCurrentUser } from "@/lib/auth";
-import { requestStore } from "@/lib/requestStore";
+import { requestStore, useTechnicians } from "@/lib/requestStore";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -58,6 +58,7 @@ export function JobCard({
   onDragEnd,
 }: Props) {
   const user = getCurrentUser();
+  const techniciansList = useTechnicians();
   const isSupervisor = user?.role === "supervisor";
   const isCompleted = request.status === "complete";
 
@@ -146,7 +147,7 @@ export function JobCard({
 
   const handleAssignTechnician = (techId: string) => {
     requestStore.assignTechnician(request.request_id, techId, user?.name || "Supervisor");
-    const techName = TECHNICIANS_LIST.find((t) => t.emp_id === techId)?.name || techId;
+    const techName = techniciansList.find((t) => t.emp_id === techId)?.name || techId;
     toast.success(`มอบหมายงาน ${request.request_id} ให้แก่ ${techName}`);
   };
 
@@ -177,12 +178,14 @@ export function JobCard({
         <div className="p-4 space-y-3">
           {/* Lock Banner if Completed */}
           {isCompleted && (
-            <div className="flex items-center justify-between gap-1.5 px-2.5 py-1.5 rounded-md bg-slate-900 text-slate-100 text-xs font-semibold">
-              <div className="flex items-center gap-1.5">
-                <Lock className="h-3.5 w-3.5 text-emerald-400" />
-                <span>งานเสร็จสิ้นสมบูรณ์ (ล็อกการแก้ไข)</span>
+            <div className="flex items-center justify-between gap-2 px-3 py-2 rounded-lg bg-slate-900/90 dark:bg-slate-950 text-slate-100 border border-slate-700/60 shadow-xs">
+              <div className="flex items-center gap-2 text-xs font-semibold text-slate-200 min-w-0">
+                <Lock className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
+                <span className="truncate">งานเสร็จสิ้นสมบูรณ์ (ล็อกการแก้ไข)</span>
               </div>
-              <Badge variant="outline" className="text-[10px] bg-slate-800 border-slate-700 text-emerald-400">Read Only</Badge>
+              <span className="text-[10px] font-extrabold tracking-wider uppercase px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 whitespace-nowrap shrink-0">
+                READ ONLY
+              </span>
             </div>
           )}
 
@@ -276,7 +279,7 @@ export function JobCard({
 
                 {request.assigned_to && request.status !== "open" && (
                   <DetailMiniGroup title="ข้อมูลช่างผู้รับงาน">
-                    <DetailLine label="ช่าง" value={getTechnicianName(request.assigned_to)} />
+                    <DetailLine label="ช่าง" value={getTechnicianName(request.assigned_to, request.assigned_technician_name)} />
                     <DetailLine label="หน่วยงาน" value={getTechnicianDepartment(request.assigned_to)} />
                   </DetailMiniGroup>
                 )}
@@ -352,7 +355,7 @@ export function JobCard({
                     <SelectValue placeholder="เลือกช่างผู้รับงาน" />
                   </SelectTrigger>
                   <SelectContent>
-                    {TECHNICIANS_LIST.map((tech) => (
+                    {techniciansList.map((tech) => (
                       <SelectItem key={tech.emp_id} value={tech.emp_id} className="text-xs">
                         {tech.name} ({tech.emp_id})
                       </SelectItem>
@@ -361,7 +364,7 @@ export function JobCard({
                 </Select>
               </div>
             ) : (
-              <span className="font-semibold text-foreground truncate min-w-0 text-right">{request.assigned_to ? getTechnicianName(request.assigned_to) : "ยังไม่ได้มอบหมาย"}</span>
+              <span className="font-semibold text-foreground truncate min-w-0 text-right">{request.assigned_to ? getTechnicianName(request.assigned_to, request.assigned_technician_name) : "ยังไม่ได้มอบหมาย"}</span>
             )}
           </div>
 
@@ -450,10 +453,28 @@ export function JobCard({
                 </Button>
               </div>
 
-              {/* Cancel or Delete Action Button */}
-              {!isCompleted && (
-                <div className="pt-1 flex justify-end">
-                  {isSupervisor ? (
+              {/* Cancel or Delete Action Button or Re-open for Supervisor */}
+              <div className="pt-1 flex justify-end gap-1.5">
+                {isSupervisor ? (
+                  <>
+                    {isCompleted && (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        className="h-7 text-[11px] font-bold px-2.5 gap-1 rounded-md border-amber-500/80 bg-amber-500/10 text-amber-800 dark:text-amber-300 hover:bg-amber-600 hover:text-white dark:hover:bg-amber-500 dark:hover:text-white transition-all duration-200 shadow-2xs group/unlock"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onChangeStatus?.(request.request_id, "doing", "ปลดล็อกเปิดงานใหม่");
+                          toast.info(`ปลดล็อกเปิดงานซ่อม ${request.request_id} กลับมาเป็นสถานะกำลังดำเนินการซ่อมแล้ว`);
+                        }}
+                        title="ปลดล็อกเปิดงานซ่อมใหม่ (สิทธิ์ Supervisor)"
+                      >
+                        <Lock className="h-3.5 w-3.5 shrink-0 text-amber-600 dark:text-amber-400 group-hover/unlock:text-white transition-colors" />
+                        <span>ปลดล็อกเปิดงานใหม่</span>
+                      </Button>
+                    )}
+
                     <Button
                       type="button"
                       size="sm"
@@ -468,30 +489,30 @@ export function JobCard({
                       <Trash2 className="h-3.5 w-3.5 shrink-0" />
                       <span>ลบงาน</span>
                     </Button>
-                  ) : (
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="ghost"
-                      className="h-7 text-[11px] font-semibold px-2.5 gap-1 rounded-md border border-amber-300 text-amber-700 hover:text-amber-700 hover:bg-amber-50 dark:hover:bg-amber-950/40 transition-all shadow-xs"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setIsCancelModalOpen(true);
-                      }}
-                      disabled={request.cancellation_request?.status === "pending"}
-                      title="ขอยกเลิกงานซ่อม"
-                    >
-                      <Ban className="h-3.5 w-3.5 shrink-0 text-amber-600" />
-                      <span>{request.cancellation_request?.status === "pending" ? "รออนุมัติยกเลิก" : "ขอยกเลิกงาน"}</span>
-                    </Button>
-                  )}
-                </div>
-              )}
+                  </>
+                ) : !isCompleted ? (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    className="h-7 text-[11px] font-semibold px-2.5 gap-1 rounded-md border border-amber-300 text-amber-700 hover:text-amber-700 hover:bg-amber-50 dark:hover:bg-amber-950/40 transition-all shadow-xs"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setIsCancelModalOpen(true);
+                    }}
+                    disabled={request.cancellation_request?.status === "pending"}
+                    title="ขอยกเลิกงานซ่อม"
+                  >
+                    <Ban className="h-3.5 w-3.5 shrink-0 text-amber-600" />
+                    <span>{request.cancellation_request?.status === "pending" ? "รออนุมัติยกเลิก" : "ขอยกเลิกงาน"}</span>
+                  </Button>
+                ) : null}
+              </div>
             </div>
           )}
 
-          {/* Quick Status Buttons (Hidden if completed) */}
-          {showQuickActions && request.status !== "open" && !isCompleted && isExpanded && (
+          {/* Quick Status Buttons (Hidden if completed unless Supervisor) */}
+          {showQuickActions && request.status !== "open" && (!isCompleted || isSupervisor) && isExpanded && (
             <div className="grid grid-cols-3 gap-1 pt-1 font-semibold text-[11px]">
               <Button
                 size="sm"

@@ -1,6 +1,7 @@
-import { useSyncExternalStore } from "react";
+import { useState, useEffect } from "react";
+import { api } from "./api";
 
-export interface AssetMachine {
+export type AssetMachine = {
   asset_id: string;
   asset_name: string;
   asset_type: string;
@@ -11,17 +12,15 @@ export interface AssetMachine {
   location_line: string;
   access_required: boolean;
   access_time_window: string;
-  suggested_job_type: "electrical-control" | "mechanical" | "pneumatic-hydraulic" | "lubrication-fluid" | "other";
-  status: "active" | "maintenance" | "inactive";
-  created_at: string;
-}
+  suggested_job_type: "mechanical" | "electrical-control" | "pneumatic-hydraulic" | "other";
+  status: "active" | "maintenance";
+  created_at?: string;
+};
 
-type Listener = () => void;
-
-const INITIAL_ASSETS: AssetMachine[] = [
+export const FALLBACK_ASSET_MACHINES: AssetMachine[] = [
   {
     asset_id: "MCH-PR-2041",
-    asset_name: "Hydraulic Press Machine #3",
+    asset_name: "Hydraulic Press Line 3 (เครื่องปั๊มขึ้นรูป)",
     asset_type: "Hydraulic Press",
     machine_number: "HP-2041",
     machine_zone: "ZONE-B2",
@@ -32,126 +31,146 @@ const INITIAL_ASSETS: AssetMachine[] = [
     access_time_window: "08:00-17:00",
     suggested_job_type: "mechanical",
     status: "active",
-    created_at: "2026-01-10T08:00:00.000Z",
   },
   {
     asset_id: "ELC-DB-5510",
-    asset_name: "Main Distribution Board (MDB-2)",
+    asset_name: "ตู้ควบคุมไฟฟ้า Main DB-01",
     asset_type: "ตู้ควบคุมไฟฟ้า",
     machine_number: "DB-5510",
     machine_zone: "ELECTRICAL-ROOM",
     location_building: "อาคาร B",
     location_floor: "ชั้น 2",
-    location_line: "ห้องไฟฟ้าหลัก",
+    location_line: "ห้องไฟฟ้า",
     access_required: true,
     access_time_window: "09:00-16:30",
     suggested_job_type: "electrical-control",
     status: "active",
-    created_at: "2026-01-12T09:30:00.000Z",
   },
   {
     asset_id: "CNV-ASSY-08",
-    asset_name: "Assembly Belt Conveyor #8",
+    asset_name: "Conveyor Assembly Line #8",
     asset_type: "Conveyor Assembly",
     machine_number: "CNV-08",
     machine_zone: "ASSEMBLY",
     location_building: "อาคารผลิตหลัก",
     location_floor: "ชั้น 1",
-    location_line: "Assembly Line 8",
+    location_line: "Assembly #8",
     access_required: false,
     access_time_window: "เข้าได้ตลอดเวลา",
     suggested_job_type: "mechanical",
-    status: "active",
-    created_at: "2026-01-15T11:00:00.000Z",
+    status: "maintenance",
   },
   {
-    asset_id: "AC-OFF-019",
-    asset_name: "Chiller VRV Air Condition",
-    asset_type: "ระบบปรับอากาศ central",
-    machine_number: "AC-019",
-    machine_zone: "MEETING-ROOM",
-    location_building: "อาคารสำนักงาน",
-    location_floor: "ชั้น 3",
-    location_line: "ห้องประชุมใหญ่",
-    access_required: false,
-    access_time_window: "08:30-18:00",
-    suggested_job_type: "other",
-    status: "active",
-    created_at: "2026-02-01T14:20:00.000Z",
-  },
-  {
-    asset_id: "MCH-CNC-12",
-    asset_name: "5-Axis CNC Milling Machine",
-    asset_type: "CNC Machine",
-    machine_number: "CNC-12",
-    machine_zone: "MACHINING-ZONE",
-    location_building: "อาคารโรงกลึง",
+    asset_id: "MC-CNC-001",
+    asset_name: "เครื่องกัด CNC 5 แกน (Haas VF-2SS)",
+    asset_type: "CNC Milling",
+    machine_number: "CNC-001",
+    machine_zone: "ZONE-A",
+    location_building: "อาคาร A",
     location_floor: "ชั้น 1",
-    location_line: "CNC Line A",
-    access_required: true,
+    location_line: "โซนการผลิต 1",
+    access_required: false,
     access_time_window: "08:00-17:00",
     suggested_job_type: "mechanical",
-    status: "active",
-    created_at: "2026-02-10T10:15:00.000Z",
+    status: "maintenance",
   },
   {
-    asset_id: "PLB-WC-302",
-    asset_name: "Water Pump System Floor 3",
-    asset_type: "ระบบปั๊มน้ำอาคาร",
-    machine_number: "PUMP-302",
-    machine_zone: "UTILITY",
-    location_building: "อาคารสำนักงาน",
-    location_floor: "ชั้น 3",
-    location_line: "ห้องสุขาชาย",
+    asset_id: "MC-ARM-002",
+    asset_name: "หุ่นยนต์เชื่อมพ่นสี (KUKA KR-10)",
+    asset_type: "Robotic Arm",
+    machine_number: "ARM-002",
+    machine_zone: "ZONE-B",
+    location_building: "อาคาร B",
+    location_floor: "ชั้น 1",
+    location_line: "ไลน์ประกอบ",
+    access_required: true,
+    access_time_window: "08:00-17:00",
+    suggested_job_type: "electrical-control",
+    status: "maintenance",
+  },
+  {
+    asset_id: "PMP-HYD-003",
+    asset_name: "ปั๊มไฮดรอลิกกำลังสูง (Bosch Rexroth)",
+    asset_type: "Hydraulic Pump",
+    machine_number: "PMP-003",
+    machine_zone: "PUMP-ROOM",
+    location_building: "อาคาร A",
+    location_floor: "ชั้น 1",
+    location_line: "ห้องปั๊มน้ำ",
     access_required: false,
     access_time_window: "เข้าได้ตลอดเวลา",
-    suggested_job_type: "other",
+    suggested_job_type: "pneumatic-hydraulic",
     status: "active",
-    created_at: "2026-03-01T09:00:00.000Z",
   },
 ];
 
-let assetsState: AssetMachine[] = INITIAL_ASSETS;
-const listeners = new Set<Listener>();
+export async function fetchAssetsFromApi(): Promise<AssetMachine[]> {
+  try {
+    const res = await api.get("/assets");
+    if (res.data?.data && Array.isArray(res.data.data) && res.data.data.length > 0) {
+      return res.data.data.map((item: any) => ({
+        asset_id: item.asset_code,
+        asset_name: item.name,
+        asset_type: item.category || "เครื่องกล",
+        machine_number: item.model || item.serial_number || "MCH-01",
+        machine_zone: "ZONE-A",
+        location_building: item.location || "อาคารผลิตหลัก",
+        location_floor: "ชั้น 1",
+        location_line: "Line 1",
+        access_required: false,
+        access_time_window: "08:00-17:00",
+        suggested_job_type: (item.category as any) || "mechanical",
+        status: item.status === "operational" ? "active" : "maintenance",
+        created_at: item.created_at,
+      }));
+    }
+    return FALLBACK_ASSET_MACHINES;
+  } catch (error) {
+    console.warn("Fetch assets from API failed, using Self-Healing fallback catalog:", error);
+    return FALLBACK_ASSET_MACHINES;
+  }
+}
 
-function emit() {
-  listeners.forEach((l) => l());
+export async function createAssetApi(data: {
+  asset_code: string;
+  name: string;
+  location: string;
+  category: string;
+  brand?: string;
+  model?: string;
+  serial_number?: string;
+}) {
+  const res = await api.post("/assets", data);
+  return res.data;
 }
 
 export const assetStore = {
-  getAll(): AssetMachine[] {
-    return assetsState;
+  add: (data: any) => {
+    createAssetApi({
+      asset_code: data.asset_id,
+      name: data.asset_name,
+      location: `${data.location_building} ${data.location_floor}`,
+      category: data.suggested_job_type || 'mechanical',
+    });
   },
-  getById(id: string): AssetMachine | undefined {
-    return assetsState.find((a) => a.asset_id === id);
-  },
-  subscribe(listener: Listener) {
-    listeners.add(listener);
-    return () => listeners.delete(listener);
-  },
-  add(input: Omit<AssetMachine, "created_at">): AssetMachine {
-    const newAsset: AssetMachine = {
-      ...input,
-      created_at: new Date().toISOString(),
-    };
-    assetsState = [newAsset, ...assetsState];
-    emit();
-    return newAsset;
-  },
-  update(id: string, patch: Partial<AssetMachine>) {
-    assetsState = assetsState.map((a) => (a.asset_id === id ? { ...a, ...patch } : a));
-    emit();
-  },
-  delete(id: string) {
-    assetsState = assetsState.filter((a) => a.asset_id !== id);
-    emit();
-  },
+  update: () => {},
+  delete: () => {},
 };
 
-export function useAssets(): AssetMachine[] {
-  return useSyncExternalStore(
-    (l) => assetStore.subscribe(l),
-    () => assetStore.getAll(),
-    () => assetStore.getAll()
-  );
+export function useAssets() {
+  const [assets, setAssets] = useState<AssetMachine[]>(FALLBACK_ASSET_MACHINES);
+
+  useEffect(() => {
+    let isMounted = true;
+    fetchAssetsFromApi().then((data) => {
+      if (isMounted && data.length > 0) {
+        setAssets(data);
+      }
+    });
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  return assets;
 }

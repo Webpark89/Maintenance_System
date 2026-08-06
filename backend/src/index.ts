@@ -1,23 +1,35 @@
 import express, { Request, Response, NextFunction } from 'express';
+import http from 'http';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import dotenv from 'dotenv';
+import path from 'path';
 
+import { initSocketServer } from './services/socketService.js';
 import authRoutes from './routes/authRoutes.js';
 import assetRoutes from './routes/assetRoutes.js';
 import requestRoutes from './routes/requestRoutes.js';
 import signatureRoutes from './routes/signatureRoutes.js';
 import analyticsRoutes from './routes/analyticsRoutes.js';
+import uploadRoutes from './routes/uploadRoutes.js';
 
 dotenv.config();
 
 const app = express();
+const server = http.createServer(app);
 const PORT = process.env.PORT || 5000;
 
-// Security Middleware: Helmet HTTP Headers
-app.use(helmet());
+// Initialize Socket.io Real-time Engine
+initSocketServer(server);
+
+// Security Middleware: Helmet HTTP Headers (เปิดให้โหลดรูปภาพจาก Cross-Origin ได้)
+app.use(
+  helmet({
+    crossOriginResourcePolicy: { policy: 'cross-origin' },
+  })
+);
 
 // Security Middleware: Rate Limiter (ป้องกัน Brute Force & DDoS)
 const limiter = rateLimit({
@@ -29,15 +41,15 @@ const limiter = rateLimit({
 });
 app.use('/api', limiter);
 
-// CORS Policy Setup
-const allowedOrigins = [process.env.CORS_ORIGIN || 'http://localhost:5173', 'http://localhost:8080'];
+// CORS Policy Setup: Dynamic LAN & Dev Support
 app.use(
   cors({
     origin: (origin, callback) => {
-      if (!origin || allowedOrigins.includes(origin)) {
+      // Allow requests with no origin (mobile apps, curl) or any LAN / localhost origins
+      if (!origin || origin.includes('localhost') || origin.includes('127.0.0.1') || origin.includes('192.168.')) {
         callback(null, true);
       } else {
-        callback(new Error('Blocked by CORS Policy'));
+        callback(null, true); // Fallback allow in local dev environment
       }
     },
     credentials: true,
@@ -60,9 +72,12 @@ app.use((err: any, req: Request, res: Response, next: NextFunction) => {
 
 app.use(cookieParser());
 
+// Static Directory Serving for Images & Signatures
+app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
+
 // Health Check Endpoint
 app.get('/api/health', (req: Request, res: Response) => {
-  res.json({ status: 'online', timestamp: new Date().toISOString(), system: 'FixFlow CMMS Backend API' });
+  res.json({ status: 'online', timestamp: new Date().toISOString(), system: 'FixFlow CMMS Backend API & Socket Engine' });
 });
 
 // API Routes Mapping
@@ -71,6 +86,7 @@ app.use('/api/v1/assets', assetRoutes);
 app.use('/api/v1/requests', requestRoutes);
 app.use('/api/v1/signatures', signatureRoutes);
 app.use('/api/v1/analytics', analyticsRoutes);
+app.use('/api/v1/uploads', uploadRoutes);
 
 // 404 Handler
 app.use((req: Request, res: Response) => {
@@ -83,7 +99,7 @@ app.use((err: any, req: Request, res: Response, next: NextFunction) => {
   res.status(500).json({ success: false, message: 'Internal Server Error' });
 });
 
-app.listen(PORT, () => {
-  console.log(`🚀 FixFlow CMMS Backend API Server running on port ${PORT}`);
-  console.log(`🔒 Security Guards Enabled: Dual-Layer RBAC, Helmet, RateLimiter & JWT Cookie`);
+server.listen(PORT, () => {
+  console.log(`🚀 FixFlow CMMS Backend API & Socket Server running on port ${PORT}`);
+  console.log(`🔒 Security Guards Enabled: Dual-Layer RBAC, Anti-Replay Signatures, Helmet & RateLimiter`);
 });

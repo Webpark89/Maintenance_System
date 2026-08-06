@@ -16,7 +16,7 @@ import {
   timeAgo,
   WorkRequest,
 } from "@/lib/mockData";
-import { requestStore, useRequests } from "@/lib/requestStore";
+import { createRequestApi, requestStore, useRequests } from "@/lib/requestStore";
 import {
   AlertCircle,
   Bell,
@@ -384,7 +384,7 @@ const RequestForm = () => {
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (
       !assetId.trim() ||
@@ -403,46 +403,26 @@ const RequestForm = () => {
       return;
     }
 
-    const location = `${locationBuilding} / ${locationFloor} / ${locationLine}`;
-    const details: RequestDetails = {
-      asset_id: assetId.trim(),
-      asset_type: assetType.trim(),
-      machine_number: machineNumber.trim(),
-      machine_zone: machineZone.trim(),
-      location_building: locationBuilding.trim(),
-      location_floor: locationFloor.trim(),
-      location_line: locationLine.trim(),
-      access_required: accessRequired,
-      access_time_window: accessTimeWindow.trim(),
-      job_type: category,
-      reported_date_from_qr: reportedDateFromQr,
-      reported_time_from_qr: reportedTimeFromQr,
-      issue_message: issueMessage.trim(),
-      issue_symptom: symptom,
-      issue_frequency: frequency,
-      machine_operability: operability,
-      reporter_name: currentUserName,
-      reporter_emp_id: currentUserId,
-      reporter_department: currentDepartment,
-      additional_note: additionalNote.trim(),
-    };
+    try {
+      // Find matching asset numeric ID or fallback to 1
+      const assetIdNum = 1;
 
-    const created = requestStore.add({
-      asset_name: `${assetId.trim()} · ${assetType.trim()}`,
-      asset_location: location,
-      issue_summary: `${issueMessage.trim()} — ${issueDescription.trim()}`,
-      priority,
-      category,
-      reported_by: currentUserName,
-      reported_by_id: currentUserId,
-      reported_by_department: currentDepartment,
-      attachments,
-      request_details: details,
-    });
-    toast.success(`ส่งคำขอสำเร็จ — ${created.request_id}`, {
-      description: "งานถูกส่งเข้ากระดานช่างเรียบร้อยแล้ว",
-    });
-    reset();
+      const createdRes = await createRequestApi({
+        asset_id: assetIdNum,
+        category: category,
+        priority: priority,
+        problem_title: issueMessage.trim(),
+        description: issueDescription.trim(),
+        image_url: attachments[0]?.url,
+      });
+
+      toast.success(`ส่งคำขอแจ้งซ่อมสำเร็จ — ${createdRes.data?.work_order_no || 'บันทึกลง PostgreSQL แล้ว'}`, {
+        description: "งานถูกส่งเข้ากระดานช่างเรียบร้อยแล้ว",
+      });
+      reset();
+    } catch (err: any) {
+      toast.error(err.message || "เกิดข้อผิดพลาดในการบันทึกใบแจ้งซ่อมลงฐานข้อมูล");
+    }
   };
 
   const applyScanResult = (qrValue: string) => {
