@@ -1,0 +1,165 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model assets {
+  id                    Int                    @id @default(autoincrement())
+  asset_code            String                 @unique @db.VarChar(50)
+  name                  String                 @db.VarChar(150)
+  location              String                 @db.VarChar(100)
+  brand                 String?                @db.VarChar(100)
+  model                 String?                @db.VarChar(100)
+  serial_number         String?                @db.VarChar(100)
+  category              String                 @db.VarChar(50)
+  status                asset_status?          @default(operational)
+  installation_date     DateTime?              @db.Date
+  last_maintenance_date DateTime?              @db.Date
+  created_at            DateTime?              @default(now()) @db.Timestamp(6)
+  maintenance_requests  maintenance_requests[]
+}
+
+model departments {
+  id        Int     @id @default(autoincrement())
+  dept_code String  @unique @db.VarChar(20)
+  dept_name String  @db.VarChar(100)
+  users     users[]
+}
+
+model dual_signatures {
+  id                   Int                   @id @default(autoincrement())
+  request_id           Int?                  @unique
+  approver1_name       String?               @db.VarChar(100)
+  approver1_role       String?               @db.VarChar(100)
+  approver1_department String?               @db.VarChar(100)
+  approver1_sig_url    String?
+  approver1_signed_at  DateTime?             @db.Timestamp(6)
+  approver2_name       String?               @db.VarChar(100)
+  approver2_role       String?               @db.VarChar(100)
+  approver2_department String?               @db.VarChar(100)
+  approver2_sig_url    String?
+  approver2_signed_at  DateTime?             @db.Timestamp(6)
+  note                 String?
+  maintenance_requests maintenance_requests? @relation(fields: [request_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model maintenance_requests {
+  id                                                       Int                       @id @default(autoincrement())
+  work_order_no                                            String                    @unique @db.VarChar(30)
+  asset_id                                                 Int?
+  reported_by_id                                           Int?
+  assigned_technician_id                                   Int?
+  priority                                                 request_priority?         @default(medium)
+  status                                                   request_status?           @default(open)
+  category                                                 String                    @db.VarChar(50)
+  problem_title                                            String                    @db.VarChar(200)
+  description                                              String?
+  image_url                                                String?
+  estimated_hours                                          Decimal?                  @db.Decimal(5, 2)
+  actual_hours                                             Decimal?                  @db.Decimal(5, 2)
+  root_cause                                               String?
+  action_taken                                             String?
+  preventive_note                                          String?
+  is_cancel_requested                                      Boolean?                  @default(false)
+  cancel_reason                                            String?
+  cancel_requested_by_id                                   Int?
+  created_at                                               DateTime?                 @default(now()) @db.Timestamp(6)
+  assessed_at                                              DateTime?                 @db.Timestamp(6)
+  repair_started_at                                        DateTime?                 @db.Timestamp(6)
+  repaired_at                                              DateTime?                 @db.Timestamp(6)
+  completed_at                                             DateTime?                 @db.Timestamp(6)
+  dual_signatures                                          dual_signatures?
+  assets                                                   assets?                   @relation(fields: [asset_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  users_maintenance_requests_assigned_technician_idTousers users?                    @relation("maintenance_requests_assigned_technician_idTousers", fields: [assigned_technician_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  users_maintenance_requests_cancel_requested_by_idTousers users?                    @relation("maintenance_requests_cancel_requested_by_idTousers", fields: [cancel_requested_by_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  users_maintenance_requests_reported_by_idTousers         users?                    @relation("maintenance_requests_reported_by_idTousers", fields: [reported_by_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  notifications                                            notifications[]
+  work_order_requisitions                                  work_order_requisitions[]
+}
+
+model notifications {
+  id                   Int                   @id @default(autoincrement())
+  user_id              Int?
+  request_id           Int?
+  title                String                @db.VarChar(150)
+  message              String
+  is_read              Boolean?              @default(false)
+  created_at           DateTime?             @default(now()) @db.Timestamp(6)
+  maintenance_requests maintenance_requests? @relation(fields: [request_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  users                users?                @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model spare_parts {
+  id                      Int                       @id @default(autoincrement())
+  part_code               String                    @unique @db.VarChar(50)
+  name                    String                    @db.VarChar(150)
+  unit_price              Decimal                   @default(0.00) @db.Decimal(10, 2)
+  stock_qty               Int                       @default(0)
+  unit                    String?                   @default("ชิ้น") @db.VarChar(20)
+  work_order_requisitions work_order_requisitions[]
+}
+
+model users {
+  id                                                                      Int                       @id @default(autoincrement())
+  emp_id                                                                  String                    @unique @db.VarChar(30)
+  name                                                                    String                    @db.VarChar(100)
+  password_hash                                                           String                    @db.VarChar(255)
+  role                                                                    user_role                 @default(technician)
+  department_id                                                           Int?
+  skills                                                                  String[]
+  created_at                                                              DateTime?                 @default(now()) @db.Timestamp(6)
+  maintenance_requests_maintenance_requests_assigned_technician_idTousers maintenance_requests[]    @relation("maintenance_requests_assigned_technician_idTousers")
+  maintenance_requests_maintenance_requests_cancel_requested_by_idTousers maintenance_requests[]    @relation("maintenance_requests_cancel_requested_by_idTousers")
+  maintenance_requests_maintenance_requests_reported_by_idTousers         maintenance_requests[]    @relation("maintenance_requests_reported_by_idTousers")
+  notifications                                                           notifications[]
+  departments                                                             departments?              @relation(fields: [department_id], references: [id], onUpdate: NoAction)
+  work_order_requisitions                                                 work_order_requisitions[]
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model work_order_requisitions {
+  id                   Int                   @id @default(autoincrement())
+  request_id           Int?
+  part_id              Int?
+  quantity             Int
+  unit_price           Decimal               @db.Decimal(10, 2)
+  total_price          Decimal               @db.Decimal(10, 2)
+  is_approved          Boolean?              @default(false)
+  approved_by_id       Int?
+  created_at           DateTime?             @default(now()) @db.Timestamp(6)
+  users                users?                @relation(fields: [approved_by_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  spare_parts          spare_parts?          @relation(fields: [part_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  maintenance_requests maintenance_requests? @relation(fields: [request_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+enum asset_status {
+  operational
+  breakdown
+  maintenance
+}
+
+enum request_priority {
+  low
+  medium
+  high
+  critical
+}
+
+enum request_status {
+  open
+  assess
+  waiting
+  doing
+  done
+  complete
+  cancelled
+}
+
+enum user_role {
+  requester
+  technician
+  supervisor
+}
