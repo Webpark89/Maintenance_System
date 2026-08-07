@@ -76,7 +76,7 @@ type WorkStatus = AssessmentReport["work_status"];
 type ImpactLevel = AssessmentReport["impact_while_waiting"];
 type MachineState = AssessmentReport["machine_status_while_waiting"];
 
-const TECHNICIAN_NAME = "สมศักดิ์ ช่างไฟ";
+const TECHNICIAN_NAME = "บอส";
 
 const formatDateTime = (iso: string) =>
   new Intl.DateTimeFormat("th-TH", {

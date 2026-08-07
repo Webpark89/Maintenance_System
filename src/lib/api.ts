@@ -4,9 +4,11 @@ const getBaseUrl = () => {
   if (import.meta.env.VITE_API_BASE_URL) {
     return import.meta.env.VITE_API_BASE_URL;
   }
-  const hostname = typeof window !== 'undefined' ? window.location.hostname : 'localhost';
-  // Always use http protocol for backend port 5000 to prevent HTTPS Mixed Content SSL blocks
-  return `http://${hostname}:5000/api/v1`;
+  // Use relative path when running in browser so Vite proxy handles HTTP/HTTPS seamless translation
+  if (typeof window !== 'undefined') {
+    return '/api/v1';
+  }
+  return 'http://localhost:5000/api/v1';
 };
 
 export const API_BASE_URL = getBaseUrl();
@@ -38,11 +40,15 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// Response Interceptor: Uniform error handling
+// Response Interceptor: Uniform error handling preserving network error signals
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    const message = error.response?.data?.message || 'เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์';
-    return Promise.reject(new Error(message));
+    const isNetworkError = !error.response || error.code === 'ERR_NETWORK' || error.code === 'ECONNREFUSED' || error.message?.includes('Network Error');
+    const message = error.response?.data?.message || (isNetworkError ? 'ERR_CONNECTION_REFUSED: เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์' : 'เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์');
+    const customErr = new Error(message);
+    (customErr as any).isNetworkError = isNetworkError;
+    (customErr as any).code = error.code;
+    return Promise.reject(customErr);
   }
 );

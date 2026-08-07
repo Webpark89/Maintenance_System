@@ -62,22 +62,45 @@ const Login = () => {
         navigate("/board");
       }
     } catch (err: any) {
-      console.warn("Backend API login failed, attempting local authentication fallback...", err);
+      console.warn("Backend API login response:", err);
 
-      // Smart Fallback Authentication for local demo credentials
+      const isConnError =
+        err.isNetworkError ||
+        err.code === "ERR_NETWORK" ||
+        err.code === "ECONNREFUSED" ||
+        (err.message &&
+          (err.message.includes("ERR_CONNECTION_REFUSED") ||
+            err.message.includes("Network Error") ||
+            err.message.includes("เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์")));
+
+      // If backend server responded with real API response (e.g. 401 Wrong Password), show error message to user
+      if (!isConnError) {
+        toast.error(err.message || "รหัสพนักงานหรือรหัสผ่านไม่ถูกต้อง");
+        return;
+      }
+
+      // Fallback mode when backend server is temporarily unreachable or starting up
       const upperUser = username.trim().toUpperCase();
       let detectedRole: Role = "technician";
-      let name = "สมศักดิ์ ช่างไฟ";
-      let department = "แผนกซ่อมบำรุง";
+      let name = "บอส";
+      let department = "แผนกซ่อมบำรุงโรงงาน";
+      let skills = ["Electrical", "PLC", "Control Systems"];
 
-      if (upperUser.startsWith("SUP") || upperUser.includes("SUPERVISOR")) {
+      if (upperUser === "TECH002") {
+        detectedRole = "technician";
+        name = "ตะวัน";
+        department = "แผนกซ่อมบำรุงโรงงาน";
+        skills = ["Mechanical", "Pneumatics", "Hydraulics"];
+      } else if (upperUser.startsWith("SUP") || upperUser.includes("SUPERVISOR")) {
         detectedRole = "supervisor";
-        name = "ประเสริฐ หัวหน้าช่าง";
+        name = "อาร์ม";
         department = "แผนกบริหารซ่อมบำรุง";
+        skills = ["Management", "QC", "Safety"];
       } else if (upperUser.startsWith("REQ") || upperUser.includes("REQUESTER")) {
         detectedRole = "requester";
-        name = "นภดล ฝ่ายผลิต";
-        department = "แผนกการผลิต";
+        name = "โฟกัส";
+        department = "ฝ่ายผลิตและประกอบ";
+        skills = ["Production Line 1"];
       }
 
       const fallbackPayload = {
@@ -85,11 +108,12 @@ const Login = () => {
         name,
         role: detectedRole,
         department,
-        skills: ["Electrical", "Mechanical"],
+        skills,
         token: `demo-token-${Date.now()}`,
       };
 
       sessionStorage.setItem("fixflow_user", JSON.stringify(fallbackPayload));
+      toast.info("เซิร์ฟเวอร์หลักยังไม่ได้เปิดใช้งาน ยืนยันตัวตนด้วยบัญชีโหมดสำรอง");
       toast.success(`เข้าสู่ระบบ SSO สำเร็จ: ${name}`);
 
       if (detectedRole === "requester") {
@@ -221,15 +245,15 @@ const Login = () => {
               </p>
               <ul className="grid grid-cols-1 gap-1 pl-2 text-[11px] text-muted-foreground">
                 <li className="flex items-center justify-between p-1 rounded bg-background/60 border border-border/50">
-                  <span>🛠️ <strong>ช่างซ่อม</strong>: รหัสพนักงาน <code className="text-primary font-bold">TECH001</code></span>
+                  <span>🛠️ <strong>ช่างซ่อม (บอส)</strong>: รหัสพนักงาน <code className="text-primary font-bold">TECH001</code></span>
                   <span className="text-2xs text-muted-foreground">รหัสผ่าน: demo1234</span>
                 </li>
                 <li className="flex items-center justify-between p-1 rounded bg-background/60 border border-border/50">
-                  <span>👑 <strong>หัวหน้าช่าง</strong>: รหัสพนักงาน <code className="text-amber-600 dark:text-amber-400 font-bold">SUP001</code></span>
+                  <span>👑 <strong>หัวหน้าช่าง (อาร์ม)</strong>: รหัสพนักงาน <code className="text-amber-600 dark:text-amber-400 font-bold">SUP001</code></span>
                   <span className="text-2xs text-muted-foreground">รหัสผ่าน: demo1234</span>
                 </li>
                 <li className="flex items-center justify-between p-1 rounded bg-background/60 border border-border/50">
-                  <span>📋 <strong>ผู้แจ้งซ่อม</strong>: รหัสพนักงาน <code className="text-emerald-600 dark:text-emerald-400 font-bold">REQ042</code></span>
+                  <span>📋 <strong>ผู้แจ้งซ่อม (โฟกัส)</strong>: รหัสพนักงาน <code className="text-emerald-600 dark:text-emerald-400 font-bold">REQ042</code></span>
                   <span className="text-2xs text-muted-foreground">รหัสผ่าน: demo1234</span>
                 </li>
               </ul>

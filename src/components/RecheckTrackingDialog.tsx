@@ -43,7 +43,7 @@ export function RecheckTrackingDialog({ request, open, onOpenChange }: Props) {
   };
 
   const [selectedRound, setSelectedRound] = useState<1 | 2>(1);
-  const [inspectorName, setInspectorName] = useState("สมศักดิ์ (ช่างซ่อมบำรุง)");
+  const [inspectorName, setInspectorName] = useState("บอส (ช่างซ่อมบำรุง)");
   const [inspectorDepartment, setInspectorDepartment] = useState("แผนกซ่อมบำรุง");
   const [resultStatus, setResultStatus] = useState<"completed" | "issue_found">("completed");
   const [resultSummary, setResultSummary] = useState("เข้าตรวจสอบรอบสัปดาห์ เครื่องจักรทำงานได้ตามปกติ ไม่มีอาการเสียงดังหรือน้ำมันรั่วซึม");

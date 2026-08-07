@@ -22,10 +22,10 @@ async function seed() {
   // 2. Users Seed
   const tech1 = await prisma.users.upsert({
     where: { emp_id: 'TECH001' },
-    update: {},
+    update: { password_hash: passwordHash },
     create: {
       emp_id: 'TECH001',
-      name: 'สมศักดิ์ ช่างไฟ',
+      name: 'บอส',
       password_hash: passwordHash,
       role: 'technician',
       department_id: deptMaint.id,
@@ -35,10 +35,10 @@ async function seed() {
 
   const tech2 = await prisma.users.upsert({
     where: { emp_id: 'TECH002' },
-    update: {},
+    update: { password_hash: passwordHash },
     create: {
       emp_id: 'TECH002',
-      name: 'วิชัย เครื่องกล',
+      name: 'ตะวัน',
       password_hash: passwordHash,
       role: 'technician',
       department_id: deptMaint.id,
@@ -46,38 +46,12 @@ async function seed() {
     },
   });
 
-  const tech3 = await prisma.users.upsert({
-    where: { emp_id: 'TECH003' },
-    update: {},
-    create: {
-      emp_id: 'TECH003',
-      name: 'สุรชัย ไฮดรอลิก',
-      password_hash: passwordHash,
-      role: 'technician',
-      department_id: deptMaint.id,
-      skills: ['Hydraulics', 'Welding'],
-    },
-  });
-
-  const tech4 = await prisma.users.upsert({
-    where: { emp_id: 'TECH004' },
-    update: {},
-    create: {
-      emp_id: 'TECH004',
-      name: 'กิตติพงษ์ ความเย็น',
-      password_hash: passwordHash,
-      role: 'technician',
-      department_id: deptMaint.id,
-      skills: ['HVAC', 'Plumbing'],
-    },
-  });
-
   const super1 = await prisma.users.upsert({
     where: { emp_id: 'SUP001' },
-    update: {},
+    update: { password_hash: passwordHash },
     create: {
       emp_id: 'SUP001',
-      name: 'ประเสริฐ หัวหน้าช่าง',
+      name: 'อาร์ม',
       password_hash: passwordHash,
       role: 'supervisor',
       department_id: deptMaint.id,
@@ -87,10 +61,10 @@ async function seed() {
 
   const req1 = await prisma.users.upsert({
     where: { emp_id: 'REQ042' },
-    update: {},
+    update: { password_hash: passwordHash },
     create: {
       emp_id: 'REQ042',
-      name: 'นภดล ฝ่ายผลิต',
+      name: 'โฟกัส',
       password_hash: passwordHash,
       role: 'requester',
       department_id: deptProd.id,

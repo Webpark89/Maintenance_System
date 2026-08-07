@@ -25,7 +25,7 @@ export function DualSignatureDialog({ request, open, onOpenChange }: Props) {
   const approval = request.dual_approval ?? { status: "pending" };
 
   const [activeSlot, setActiveSlot] = useState<"approver1" | "approver2">("approver1");
-  const [name, setName] = useState(activeSlot === "approver1" ? "สมศักดิ์ (หัวหน้าซ่อมบำรุง)" : "สุรชัย (หัวหน้างานซ่อมบำรุง 2)");
+  const [name, setName] = useState(activeSlot === "approver1" ? "อาร์ม (หัวหน้าซ่อมบำรุง)" : "อาร์ม (หัวหน้างานซ่อมบำรุง 2)");
   const [department, setDepartment] = useState("แผนกซ่อมบำรุง");
   const [role, setRole] = useState("หัวหน้าแผนกซ่อมบำรุง / Supervisor");
   const [note, setNote] = useState("");

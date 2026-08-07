@@ -184,10 +184,8 @@ export interface TechnicianUser {
 }
 
 export const TECHNICIANS_LIST: TechnicianUser[] = [
-  { emp_id: "TECH001", name: "สมศักดิ์ ช่างไฟ", department: "แผนกไฟฟ้าและสื่อสาร", skills: ["Electrical", "PLC"] },
-  { emp_id: "TECH002", name: "วิชัย เครื่องกล", department: "แผนกเครื่องจักรกล", skills: ["Mechanical", "Pneumatics"] },
-  { emp_id: "TECH003", name: "สุรชัย ไฮดรอลิก", department: "แผนกซ่อมบำรุงโรงงาน", skills: ["Hydraulics", "Welding"] },
-  { emp_id: "TECH004", name: "กิตติพงษ์ ความเย็น", department: "แผนกระบบปรับอากาศ", skills: ["HVAC", "Plumbing"] },
+  { emp_id: "TECH001", name: "บอส", department: "แผนกซ่อมบำรุงโรงงาน", skills: ["Electrical", "PLC", "Control Systems"] },
+  { emp_id: "TECH002", name: "ตะวัน", department: "แผนกซ่อมบำรุงโรงงาน", skills: ["Mechanical", "Pneumatics", "Hydraulics"] },
 ];
 
 export interface WorkRequest {
@@ -462,18 +460,13 @@ export interface Technician {
 export const TECHNICIAN_MAP: Record<string, Technician> = {
   TECH001: {
     technician_id: "TECH001",
-    name: "สมศักดิ์ ช่างไฟ",
-    department: "ฝ่ายซ่อมบำรุง",
+    name: "บอส",
+    department: "แผนกซ่อมบำรุงโรงงาน",
   },
   TECH002: {
     technician_id: "TECH002",
-    name: "วิษณุ ช่างกล",
-    department: "ฝ่ายซ่อมบำรุง",
-  },
-  TECH003: {
-    technician_id: "TECH003",
-    name: "สุรพล ช่างประปา",
-    department: "ฝ่ายซ่อมบำรุง",
+    name: "ตะวัน",
+    department: "แผนกซ่อมบำรุงโรงงาน",
   },
 };
 
