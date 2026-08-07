@@ -1,10 +1,10 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Wrench, ShieldCheck, Loader2, Fingerprint, Lock, User, LogIn, CheckCircle2 } from "lucide-react";
+import { Wrench, ShieldCheck, Loader2, Fingerprint, Lock, User, LogIn, CheckCircle2, CloudRain } from "lucide-react";
 import { toast } from "sonner";
 import { api } from "@/lib/api";
 import { connectSocket } from "@/lib/socket";
@@ -98,7 +98,7 @@ const Login = () => {
         skills = ["Management", "QC", "Safety"];
       } else if (upperUser.startsWith("REQ") || upperUser.includes("REQUESTER")) {
         detectedRole = "requester";
-        name = "โฟกัส";
+        name = "โฟล์ค";
         department = "ฝ่ายผลิตและประกอบ";
         skills = ["Production Line 1"];
       }
@@ -182,10 +182,16 @@ const Login = () => {
           </div>
 
           <header className="space-y-1.5">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center justify-between gap-2">
               <Badge variant="outline" className="border-primary/30 text-primary bg-primary/5 text-2xs px-2.5 py-0.5 font-bold">
                 <ShieldCheck className="h-3 w-3 mr-1 text-primary" /> Corporate SSO
               </Badge>
+              <Link 
+                to="/login-rain" 
+                className="inline-flex items-center gap-1 text-2xs text-blue-600 dark:text-blue-400 hover:underline font-medium bg-blue-500/10 px-2 py-0.5 rounded-full border border-blue-400/20"
+              >
+                <CloudRain className="h-3 w-3" /> ลองแบบ Rain Theme
+              </Link>
             </div>
             <h2 className="text-3xl font-bold text-foreground">เข้าสู่ระบบ (SSO Login)</h2>
             <p className="text-xs text-muted-foreground">
@@ -253,7 +259,7 @@ const Login = () => {
                   <span className="text-2xs text-muted-foreground">รหัสผ่าน: demo1234</span>
                 </li>
                 <li className="flex items-center justify-between p-1 rounded bg-background/60 border border-border/50">
-                  <span>📋 <strong>ผู้แจ้งซ่อม (โฟกัส)</strong>: รหัสพนักงาน <code className="text-emerald-600 dark:text-emerald-400 font-bold">REQ042</code></span>
+                  <span>📋 <strong>ผู้แจ้งซ่อม (โฟล์ค)</strong>: รหัสพนักงาน <code className="text-emerald-600 dark:text-emerald-400 font-bold">REQ042</code></span>
                   <span className="text-2xs text-muted-foreground">รหัสผ่าน: demo1234</span>
                 </li>
               </ul>

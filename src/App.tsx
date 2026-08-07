@@ -6,12 +6,14 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 
 import Login from "./pages/Login.tsx";
+import RainLoginPage from "./pages/RainLoginPage.tsx";
 import TechnicianBoard from "./pages/TechnicianBoard.tsx";
 import AssessmentForm from "./pages/AssessmentForm.tsx";
 import RequestForm from "./pages/RequestForm.tsx";
 import NotificationCenter from "./pages/NotificationCenter.tsx";
 import AssetManagement from "./pages/AssetManagement.tsx";
 import Dashboard from "./pages/Dashboard.tsx";
+import UserManagement from "./pages/UserManagement.tsx";
 import NotFound from "./pages/NotFound.tsx";
 
 const queryClient = new QueryClient();
@@ -24,12 +26,22 @@ const App = () => (
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Login />} />
+          <Route path="/login-rain" element={<RainLoginPage />} />
           
           <Route
             path="/dashboard"
             element={
               <ProtectedRoute allowedRoles={["supervisor"]}>
                 <Dashboard />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/users"
+            element={
+              <ProtectedRoute allowedRoles={["supervisor"]}>
+                <UserManagement />
               </ProtectedRoute>
             }
           />

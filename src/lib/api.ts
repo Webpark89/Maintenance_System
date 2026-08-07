@@ -48,6 +48,7 @@ api.interceptors.response.use(
     const message = error.response?.data?.message || (isNetworkError ? 'ERR_CONNECTION_REFUSED: เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์' : 'เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์');
     const customErr = new Error(message);
     (customErr as any).isNetworkError = isNetworkError;
+    (customErr as any).status = error.response?.status;
     (customErr as any).code = error.code;
     return Promise.reject(customErr);
   }

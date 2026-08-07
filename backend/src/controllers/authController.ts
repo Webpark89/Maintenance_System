@@ -34,6 +34,13 @@ export async function login(req: Request, res: Response) {
       });
     }
 
+    if (user.is_active === false) {
+      return res.status(403).json({
+        success: false,
+        message: 'บัญชีผู้ใช้งานนี้ถูกระงับการใช้งาน กรุณาติดต่อหัวหน้าช่าง/ผู้ดูแลระบบ',
+      });
+    }
+
     const isPasswordValid = await comparePassword(password, user.password_hash);
     if (!isPasswordValid) {
       return res.status(401).json({

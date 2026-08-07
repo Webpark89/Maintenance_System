@@ -126,10 +126,36 @@ export default {
             height: "0",
           },
         },
+        "rain-fall": {
+          "0%": {
+            transform: "translateY(-120px) rotate(15deg)",
+            opacity: "0",
+          },
+          "15%": {
+            opacity: "0.8",
+          },
+          "90%": {
+            opacity: "0.8",
+          },
+          "100%": {
+            transform: "translateY(105vh) rotate(15deg)",
+            opacity: "0.1",
+          },
+        },
+        "gradient-slide": {
+          "0%": {
+            backgroundPosition: "0% 50%",
+          },
+          "100%": {
+            backgroundPosition: "200% 50%",
+          },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
+        "rain-fall": "rain-fall linear infinite",
+        "gradient-slide": "gradient-slide 2.5s linear infinite",
       },
     },
   },

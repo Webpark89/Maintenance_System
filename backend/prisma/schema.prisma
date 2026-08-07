@@ -110,6 +110,7 @@ model users {
   role                                                                    user_role                 @default(technician)
   department_id                                                           Int?
   skills                                                                  String[]
+  is_active                                                               Boolean?                  @default(true)
   created_at                                                              DateTime?                 @default(now()) @db.Timestamp(6)
   maintenance_requests_maintenance_requests_assigned_technician_idTousers maintenance_requests[]    @relation("maintenance_requests_assigned_technician_idTousers")
   maintenance_requests_maintenance_requests_cancel_requested_by_idTousers maintenance_requests[]    @relation("maintenance_requests_cancel_requested_by_idTousers")

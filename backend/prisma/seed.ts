@@ -61,10 +61,10 @@ async function seed() {
 
   const req1 = await prisma.users.upsert({
     where: { emp_id: 'REQ042' },
-    update: { password_hash: passwordHash },
+    update: { password_hash: passwordHash, name: 'โฟล์ค' },
     create: {
       emp_id: 'REQ042',
-      name: 'โฟกัส',
+      name: 'โฟล์ค',
       password_hash: passwordHash,
       role: 'requester',
       department_id: deptProd.id,

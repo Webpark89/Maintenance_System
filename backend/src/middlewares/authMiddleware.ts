@@ -31,3 +31,15 @@ export function authenticate(req: AuthenticatedRequest, res: Response, next: Nex
   req.user = payload;
   next();
 }
+
+export function authorize(roles: string[]) {
+  return (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+    if (!req.user || !roles.includes(req.user.role)) {
+      return res.status(403).json({
+        success: false,
+        message: 'คุณไม่มีสิทธิ์เข้าถึงฟังก์ชันนี้ (Forbidden)',
+      });
+    }
+    next();
+  };
+}

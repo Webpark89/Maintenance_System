@@ -22,6 +22,7 @@ import {
   Bell,
   LogOut,
   User,
+  Users,
 } from "lucide-react";
 import { useRequests } from "@/lib/requestStore";
 import { getCurrentUser, getUserDefaultRoute, refreshCurrentUserFromApi, UserPayload } from "@/lib/auth";
@@ -96,6 +97,12 @@ export function AppSidebar() {
       label: "ทรัพย์สิน & QR Tag",
       icon: Building,
       roles: ["technician", "supervisor"],
+    },
+    {
+      to: "/users",
+      label: "จัดการผู้ใช้งาน",
+      icon: Users,
+      roles: ["supervisor"],
     },
   ];
 

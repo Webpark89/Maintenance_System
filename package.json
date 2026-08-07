@@ -5,6 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:backend": "npm --prefix backend run dev",
+    "dev:all": "concurrently \"npm run dev:https:lan\" \"npm run dev:backend\"",
     "dev:https": "vite --https",
     "dev:https:lan": "vite --host --https",
     "build": "vite build",
@@ -79,6 +81,7 @@
     "@vitejs/plugin-basic-ssl": "^1.2.0",
     "@vitejs/plugin-react-swc": "^3.11.0",
     "autoprefixer": "^10.4.21",
+    "concurrently": "^10.0.4",
     "eslint": "^9.32.0",
     "eslint-plugin-react-hooks": "^5.2.0",
     "eslint-plugin-react-refresh": "^0.4.20",
