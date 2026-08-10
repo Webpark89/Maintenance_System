@@ -6,7 +6,10 @@ export interface TokenPayload {
   userId: number;
   empId: string;
   name: string;
-  role: 'requester' | 'technician' | 'supervisor';
+  role: string;
+  roleId?: number | null;
+  roleCode?: string;
+  permissions?: string[];
   departmentId: number | null;
 }
 

@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -33,8 +34,14 @@ import {
   CheckCircle2,
   AlertTriangle,
   Building2,
+  Eye,
+  EyeOff,
   Wrench,
   ShieldAlert,
+  ArrowLeft,
+  Save,
+  Info,
+  Key,
 } from "lucide-react";
 import { toast } from "@/components/ui/sonner";
 import { api } from "@/lib/api";
@@ -48,7 +55,6 @@ export interface SystemUser {
   role: "requester" | "technician" | "supervisor" | string;
   department_id: number | null;
   department_name: string;
-  skills: string[];
   is_active: boolean;
   created_at?: string;
 }
@@ -59,6 +65,8 @@ export interface DepartmentItem {
   dept_name: string;
 }
 
+type ViewMode = "list" | "add" | "edit";
+
 const UserManagement = () => {
   const [users, setUsers] = useState<SystemUser[]>([]);
   const [departments, setDepartments] = useState<DepartmentItem[]>([]);
@@ -66,40 +74,74 @@ const UserManagement = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterRole, setFilterRole] = useState<string>("all");
 
-  // Modals state
-  const [isAddOpen, setIsAddOpen] = useState(false);
-  const [isEditOpen, setIsEditOpen] = useState(false);
-  const [isResetOpen, setIsResetOpen] = useState(false);
+  // Page View Mode (List vs Full-page Add/Edit Form)
+  const [viewMode, setViewMode] = useState<ViewMode>("list");
   const [selectedUser, setSelectedUser] = useState<SystemUser | null>(null);
 
-  // Form states
+  // Modals state (only for Reset Password popup)
+  const [isResetOpen, setIsResetOpen] = useState(false);
+
+  // Add User form states
   const [addEmpId, setAddEmpId] = useState("");
   const [addName, setAddName] = useState("");
   const [addPassword, setAddPassword] = useState("demo1234");
   const [addRole, setAddRole] = useState<string>("technician");
   const [addDeptId, setAddDeptId] = useState<string>("");
-  const [addSkills, setAddSkills] = useState<string>("");
   const [submitting, setSubmitting] = useState(false);
 
-  // Edit form states
+  // Edit User form states (Now includes editEmpId!)
+  const [editEmpId, setEditEmpId] = useState("");
   const [editName, setEditName] = useState("");
   const [editRole, setEditRole] = useState<string>("technician");
   const [editDeptId, setEditDeptId] = useState<string>("");
-  const [editSkills, setEditSkills] = useState<string>("");
 
   // Reset password state
   const [newPassword, setNewPassword] = useState("");
+  const [showAddPassword, setShowAddPassword] = useState(false);
+  const [showResetPassword, setShowResetPassword] = useState(false);
+  const [visiblePasswords, setVisiblePasswords] = useState<Record<string, boolean>>({});
+
+  const [rolesList, setRolesList] = useState<{ id: number; code: string; name: string }[]>([]);
+
+  const togglePasswordVisibility = (empId: string) => {
+    setVisiblePasswords((prev) => ({
+      ...prev,
+      [empId]: !prev[empId],
+    }));
+  };
+
+  const getUserPassword = (empId: string) => {
+    try {
+      const stored = localStorage.getItem("fixflow_user_passwords");
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (parsed[empId]) return parsed[empId];
+      }
+    } catch (e) {}
+    return "demo1234";
+  };
 
   const fetchUsersData = async () => {
     setLoading(true);
     try {
-      const [usersRes, deptsRes] = await Promise.allSettled([
+      const [usersRes, deptsRes, rolesRes] = await Promise.allSettled([
         api.get("/users"),
         api.get("/users/departments"),
+        api.get("/roles"),
       ]);
 
       if (deptsRes.status === "fulfilled" && deptsRes.value.data?.data) {
         setDepartments(deptsRes.value.data.data);
+      }
+
+      if (rolesRes.status === "fulfilled" && rolesRes.value.data?.data) {
+        setRolesList(rolesRes.value.data.data);
+      } else {
+        setRolesList([
+          { id: 1, code: "supervisor", name: "หัวหน้าช่าง (Supervisor)" },
+          { id: 2, code: "technician", name: "ช่างซ่อม (Technician)" },
+          { id: 3, code: "requester", name: "ผู้แจ้งซ่อม (Requester)" },
+        ]);
       }
 
       if (usersRes.status === "fulfilled" && usersRes.value.data?.data) {
@@ -113,38 +155,25 @@ const UserManagement = () => {
             name: "บอส",
             role: "technician",
             department_id: 1,
-            department_name: "แผนกซ่อมบำรุงโรงงาน",
-            skills: ["Electrical", "PLC", "Control Systems"],
+            department_name: "แผนกซ่อมบำรุง",
             is_active: true,
           },
           {
             id: 2,
-            emp_id: "TECH002",
-            name: "ตะวัน",
-            role: "technician",
-            department_id: 1,
-            department_name: "แผนกซ่อมบำรุงโรงงาน",
-            skills: ["Mechanical", "Pneumatics", "Hydraulics"],
-            is_active: true,
-          },
-          {
-            id: 3,
             emp_id: "SUP001",
             name: "อาร์ม",
             role: "supervisor",
             department_id: 1,
-            department_name: "แผนกบริหารซ่อมบำรุง",
-            skills: ["Management", "QC", "Safety"],
+            department_name: "แผนกซ่อมบำรุง",
             is_active: true,
           },
           {
-            id: 4,
+            id: 3,
             emp_id: "REQ042",
-            name: "โฟล์ค",
+            name: "โฟกัส",
             role: "requester",
             department_id: 2,
             department_name: "ฝ่ายผลิตและประกอบ",
-            skills: ["Production Line 1"],
             is_active: true,
           },
         ]);
@@ -160,8 +189,37 @@ const UserManagement = () => {
     fetchUsersData();
   }, []);
 
-  // Handle Add New User
-  const handleAddUser = async (e: React.FormEvent) => {
+  const handleOpenAdd = () => {
+    resetAddForm();
+    setViewMode("add");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const handleOpenEdit = (user: SystemUser) => {
+    setSelectedUser(user);
+    setEditEmpId(user.emp_id);
+    setEditName(user.name);
+    setEditRole(user.role);
+    setEditDeptId(user.department_id ? String(user.department_id) : "");
+    setViewMode("edit");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const handleBackToList = () => {
+    setViewMode("list");
+    setSelectedUser(null);
+  };
+
+  const resetAddForm = () => {
+    setAddEmpId("");
+    setAddName("");
+    setAddPassword("demo1234");
+    setAddRole("technician");
+    setAddDeptId("");
+  };
+
+  // Handle Add New User Submit (Full Page)
+  const handleAddUserSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!addEmpId.trim() || !addName.trim() || !addPassword.trim()) {
       toast.error("กรุณากรอกรหัสพนักงาน, ชื่อ และรหัสผ่านให้ครบถ้วน");
@@ -169,13 +227,8 @@ const UserManagement = () => {
     }
 
     setSubmitting(true);
-    const skillsArray = addSkills
-      .split(",")
-      .map((s) => s.trim())
-      .filter(Boolean);
     const cleanEmpId = addEmpId.trim().toUpperCase();
 
-    // Helper to store user passwords in localStorage for fallback/offline validation
     const saveLocalPassword = (empId: string, pass: string) => {
       try {
         const raw = localStorage.getItem("fixflow_user_passwords");
@@ -194,16 +247,13 @@ const UserManagement = () => {
         password: addPassword.trim(),
         role: addRole,
         department_id: addDeptId ? Number(addDeptId) : null,
-        skills: skillsArray,
       });
 
       saveLocalPassword(cleanEmpId, addPassword.trim());
       toast.success(res.data?.message || `เพิ่มพนักงานใหม่ ${addName} สำเร็จ`);
-      setIsAddOpen(false);
-      resetAddForm();
+      handleBackToList();
       fetchUsersData();
     } catch (err: any) {
-      // Fallback local state update when backend server is offline/500
       const newLocalUser: SystemUser = {
         id: Date.now(),
         emp_id: cleanEmpId,
@@ -211,44 +261,26 @@ const UserManagement = () => {
         role: addRole,
         department_id: addDeptId ? Number(addDeptId) : null,
         department_name: departments.find((d) => String(d.id) === addDeptId)?.dept_name || "ไม่ระบุแผนก",
-        skills: skillsArray,
         is_active: true,
       };
       setUsers((prev) => [...prev, newLocalUser]);
       saveLocalPassword(cleanEmpId, addPassword.trim());
       toast.success(`เพิ่มพนักงานใหม่ ${addName} สำเร็จ (Offline Mode)`);
-      setIsAddOpen(false);
-      resetAddForm();
+      handleBackToList();
     } finally {
       setSubmitting(false);
     }
   };
 
-  const resetAddForm = () => {
-    setAddEmpId("");
-    setAddName("");
-    setAddPassword("demo1234");
-    setAddRole("technician");
-    setAddDeptId("");
-    setAddSkills("");
-  };
-
   const currentUser = getCurrentUser();
 
-  // Open Edit Modal
-  const handleOpenEdit = (user: SystemUser) => {
-    setSelectedUser(user);
-    setEditName(user.name);
-    setEditRole(user.role);
-    setEditDeptId(user.department_id ? String(user.department_id) : "");
-    setEditSkills(user.skills ? user.skills.join(", ") : "");
-    setIsEditOpen(true);
-  };
-
-  // Handle Submit Edit User
-  const handleSaveEdit = async (e: React.FormEvent) => {
+  // Handle Edit User Submit (Full Page Form with Edit emp_id!)
+  const handleSaveEditSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedUser) return;
+    if (!selectedUser || !editEmpId.trim() || !editName.trim()) {
+      toast.error("กรุณากรอกรหัสพนักงานและชื่อ-นามสกุลให้ครบถ้วน");
+      return;
+    }
 
     // Protection Guard: Self Role Change Prevention
     if (selectedUser.emp_id === currentUser?.emp_id && editRole !== currentUser?.role) {
@@ -259,22 +291,19 @@ const UserManagement = () => {
     }
 
     setSubmitting(true);
-    const skillsArray = editSkills
-      .split(",")
-      .map((s) => s.trim())
-      .filter(Boolean);
+    const cleanEmpId = editEmpId.trim().toUpperCase();
     const selectedDept = departments.find((d) => String(d.id) === editDeptId);
 
     try {
-      const res = await api.put(`/users/${selectedUser.id}`, {
+      const res = await api.patch(`/users/${selectedUser.id}`, {
+        emp_id: cleanEmpId,
         name: editName.trim(),
         role: editRole,
         department_id: editDeptId ? Number(editDeptId) : null,
-        skills: skillsArray,
       });
 
-      toast.success(res.data?.message || "อัปเดตสิทธิ์และข้อมูลผู้ใช้สำเร็จ");
-      setIsEditOpen(false);
+      toast.success(res.data?.message || "อัปเดตรหัสพนักงาน ข้อมูล และสิทธิ์สำเร็จ");
+      handleBackToList();
       fetchUsersData();
     } catch (err: any) {
       // Fallback local update when backend is offline/500
@@ -283,23 +312,23 @@ const UserManagement = () => {
           u.id === selectedUser.id
             ? {
                 ...u,
+                emp_id: cleanEmpId,
                 name: editName.trim(),
                 role: editRole,
                 department_id: editDeptId ? Number(editDeptId) : u.department_id,
                 department_name: selectedDept ? selectedDept.dept_name : u.department_name,
-                skills: skillsArray,
               }
             : u
         )
       );
-      toast.success(`อัปเดตสิทธิ์ข้อมูลผู้ใช้ ${editName} สำเร็จ (Offline Mode)`);
-      setIsEditOpen(false);
+      toast.success(`อัปเดตข้อมูลพนักงาน ${editName} (${cleanEmpId}) สำเร็จ (Offline Mode)`);
+      handleBackToList();
     } finally {
       setSubmitting(false);
     }
   };
 
-  // Handle Toggle Suspend / Active (With Supervisor Protection Guard)
+  // Handle Toggle Suspend / Active
   const handleToggleStatus = async (user: SystemUser) => {
     if (user.role === "supervisor" && user.is_active) {
       toast.error("ไม่อนุญาตให้ระงับการใช้งานบัญชีผู้ใช้ระดับ Supervisor (หัวหน้าช่าง)", {
@@ -319,7 +348,6 @@ const UserManagement = () => {
         prev.map((u) => (u.id === user.id ? { ...u, is_active: nextState } : u))
       );
     } catch (err: any) {
-      // Fallback local update when backend API server fails (e.g. 500 / ECONNREFUSED)
       setUsers((prev) =>
         prev.map((u) => (u.id === user.id ? { ...u, is_active: nextState } : u))
       );
@@ -327,7 +355,7 @@ const UserManagement = () => {
     }
   };
 
-  // Handle Reset Password
+  // Handle Reset Password Submit
   const handleResetPasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedUser || !newPassword.trim()) return;
@@ -373,408 +401,585 @@ const UserManagement = () => {
     return matchesSearch && matchesRole;
   });
 
+  // Vibrant Colorful Role Badges Matching Original Design Image 2
   const getRoleBadge = (role: string) => {
     switch (role) {
       case "supervisor":
-        return <Badge variant="outline" className="border-amber-500/40 text-amber-600 bg-amber-500/10 font-bold">👑 หัวหน้าช่าง (Supervisor)</Badge>;
+        return (
+          <Badge variant="outline" className="border-amber-500/50 text-amber-700 dark:text-amber-300 bg-amber-500/15 font-bold shadow-2xs px-2.5 py-0.5 rounded-full">
+            👑 หัวหน้าช่าง
+          </Badge>
+        );
       case "technician":
-        return <Badge variant="outline" className="border-primary/40 text-primary bg-primary/10 font-bold">🛠️ ช่างซ่อม (Technician)</Badge>;
+        return (
+          <Badge variant="outline" className="border-blue-500/50 text-blue-700 dark:text-blue-300 bg-blue-500/15 font-bold shadow-2xs px-2.5 py-0.5 rounded-full">
+            🛠️ ช่างซ่อม
+          </Badge>
+        );
       case "requester":
-        return <Badge variant="outline" className="border-emerald-500/40 text-emerald-600 bg-emerald-500/10 font-bold">📋 ผู้แจ้งซ่อม (Requester)</Badge>;
-      default:
-        return <Badge variant="secondary" className="font-semibold">{role}</Badge>;
+        return (
+          <Badge variant="outline" className="border-emerald-500/50 text-emerald-700 dark:text-emerald-300 bg-emerald-500/15 font-bold shadow-2xs px-2.5 py-0.5 rounded-full">
+            📋 ผู้แจ้งซ่อม
+          </Badge>
+        );
+      case "inventory_clerk":
+        return (
+          <Badge variant="outline" className="border-purple-500/50 text-purple-700 dark:text-purple-300 bg-purple-500/15 font-bold shadow-2xs px-2.5 py-0.5 rounded-full">
+            📦 เจ้าหน้าที่คลัง
+          </Badge>
+        );
+      case "maintenance_planner":
+        return (
+          <Badge variant="outline" className="border-cyan-500/50 text-cyan-700 dark:text-cyan-300 bg-cyan-500/15 font-bold shadow-2xs px-2.5 py-0.5 rounded-full">
+            🗓️ ผู้วางแผนซ่อม
+          </Badge>
+        );
+      case "qc_inspector":
+        return (
+          <Badge variant="outline" className="border-indigo-500/50 text-indigo-700 dark:text-indigo-300 bg-indigo-500/15 font-bold shadow-2xs px-2.5 py-0.5 rounded-full">
+            🔍 ผู้ตรวจ QC
+          </Badge>
+        );
+      case "plant_manager":
+        return (
+          <Badge variant="outline" className="border-rose-500/50 text-rose-700 dark:text-rose-300 bg-rose-500/15 font-bold shadow-2xs px-2.5 py-0.5 rounded-full">
+            🏭 ผู้จัดการโรงงาน
+          </Badge>
+        );
+      default: {
+        const matchedRole = rolesList.find((r) => r.code === role);
+        return (
+          <Badge variant="outline" className="border-primary/50 text-primary bg-primary/15 font-bold shadow-2xs px-2.5 py-0.5 rounded-full">
+            🛡️ {matchedRole ? matchedRole.name : role}
+          </Badge>
+        );
+      }
     }
   };
 
   return (
     <AppLayout
       title="จัดการผู้ใช้งานและสิทธิ์ (User & Role)"
-      subtitle="บริหารจัดการบัญชีพนักงาน, กำหนดสิทธิ์บทบาท, เพิ่มช่างซ่อม และควบคุมการระงับใช้งาน"
+      subtitle="บริหารจัดการบัญชีพนักงาน, กำหนดบทบาทสิทธิ์, เพิ่มพนักงานใหม่ และเปลี่ยนรหัสพนักงาน"
       actions={
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={fetchUsersData} disabled={loading} className="gap-1.5 text-xs">
-            <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} /> รีเฟรชข้อมูล
+        viewMode === "list" ? (
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={fetchUsersData} disabled={loading} className="gap-1.5 text-xs">
+              <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} /> รีเฟรชข้อมูล
+            </Button>
+            <a href="/roles">
+              <Button variant="secondary" size="sm" className="gap-1.5 text-xs font-semibold shadow-sm">
+                <ShieldCheck className="h-4 w-4 text-primary" /> จัดการบทบาท & สิทธิ์
+              </Button>
+            </a>
+            <Button variant="industrial" size="sm" onClick={handleOpenAdd} className="gap-1.5 text-xs font-bold shadow-sm">
+              <UserPlus className="h-4 w-4" /> + เพิ่มพนักงานใหม่
+            </Button>
+          </div>
+        ) : (
+          <Button variant="outline" size="sm" onClick={handleBackToList} className="gap-1.5 text-xs">
+            <ArrowLeft className="h-4 w-4" /> ย้อนกลับไปยังรายชื่อพนักงาน
           </Button>
-          <Button variant="industrial" size="sm" onClick={() => setIsAddOpen(true)} className="gap-1.5 text-xs font-bold shadow-sm">
-            <UserPlus className="h-4 w-4" /> + เพิ่มพนักงานใหม่
-          </Button>
-        </div>
+        )
       }
     >
       <div className="space-y-6">
+        {/* VIEW 1: USER LIST TABLE */}
+        {viewMode === "list" && (
+          <>
+            {/* Search & Filter Controls */}
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-card/60 p-4 rounded-xl border border-border">
+              <div className="relative w-full sm:w-80">
+                <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="ค้นหารหัสพนักงาน, ชื่อ หรือแผนก..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-9 h-9 text-xs bg-background"
+                />
+              </div>
 
-      {/* Filters & Search */}
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-card/60 p-4 rounded-xl border border-border">
-        <div className="relative w-full sm:w-80">
-          <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="ค้นหารหัสพนักงาน, ชื่อ หรือแผนก..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-9 h-9 text-xs bg-background"
-          />
-        </div>
+              <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+                <span className="text-xs text-muted-foreground font-semibold">กรองตามบทบาท:</span>
+                <Select value={filterRole} onValueChange={setFilterRole}>
+                  <SelectTrigger className="w-[180px] h-9 text-xs bg-background">
+                    <SelectValue placeholder="เลือกบทบาท" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">แสดงทั้งหมด</SelectItem>
+                    {rolesList.map((r) => (
+                      <SelectItem key={r.id} value={r.code}>
+                        {r.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
 
-        <div className="flex items-center gap-2 w-full sm:w-auto">
-          <Label className="text-xs font-semibold text-muted-foreground whitespace-nowrap">กรองตามบทบาท:</Label>
-          <Select value={filterRole} onValueChange={setFilterRole}>
-            <SelectTrigger className="h-9 text-xs w-44 bg-background">
-              <SelectValue placeholder="ทั้งหมด" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">แสดงทั้งหมด</SelectItem>
-              <SelectItem value="technician">🛠️ ช่างซ่อม (Technician)</SelectItem>
-              <SelectItem value="supervisor">👑 หัวหน้าช่าง (Supervisor)</SelectItem>
-              <SelectItem value="requester">📋 ผู้แจ้งซ่อม (Requester)</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
+            {/* Users Table */}
+            <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-xs">
+              {loading ? (
+                <div className="p-12 text-center space-y-3">
+                  <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
+                  <p className="text-xs text-muted-foreground">กำลังโหลดรายชื่อพนักงานจากฐานข้อมูล...</p>
+                </div>
+              ) : filteredUsers.length === 0 ? (
+                <div className="p-12 text-center space-y-2">
+                  <Users className="h-10 w-10 text-muted-foreground/50 mx-auto" />
+                  <p className="text-sm font-semibold text-foreground">ไม่พบข้อมูลพนักงานที่ค้นหา</p>
+                  <p className="text-xs text-muted-foreground">ลองเปลี่ยนคำค้นหาหรือกดเพิ่มพนักงานใหม่</p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs">
+                    <thead className="bg-muted/40 border-b border-border">
+                      <tr>
+                        <th className="py-2.5 px-4">
+                          <div className="flex flex-col">
+                            <span className="text-xs font-bold text-foreground">รหัสพนักงาน</span>
+                            <span className="text-[10px] text-muted-foreground/80 font-mono tracking-wider">EMP ID</span>
+                          </div>
+                        </th>
+                        <th className="py-2.5 px-4">
+                          <div className="flex flex-col">
+                            <span className="text-xs font-bold text-foreground">ชื่อ-นามสกุล</span>
+                            <span className="text-[10px] text-muted-foreground/80 font-mono tracking-wider">FULL NAME</span>
+                          </div>
+                        </th>
+                        <th className="py-2.5 px-4">
+                          <div className="flex flex-col">
+                            <span className="text-xs font-bold text-foreground">บทบาท</span>
+                            <span className="text-[10px] text-muted-foreground/80 font-mono tracking-wider">USER ROLE</span>
+                          </div>
+                        </th>
+                        <th className="py-2.5 px-4">
+                          <div className="flex flex-col">
+                            <span className="text-xs font-bold text-foreground">แผนก</span>
+                            <span className="text-[10px] text-muted-foreground/80 font-mono tracking-wider">DEPARTMENT</span>
+                          </div>
+                        </th>
+                        <th className="py-2.5 px-4">
+                          <div className="flex flex-col">
+                            <span className="text-xs font-bold text-foreground">รหัสผ่าน</span>
+                            <span className="text-[10px] text-muted-foreground/80 font-mono tracking-wider">PASSWORD</span>
+                          </div>
+                        </th>
+                        <th className="py-2.5 px-4">
+                          <div className="flex flex-col">
+                            <span className="text-xs font-bold text-foreground">สถานะบัญชี</span>
+                            <span className="text-[10px] text-muted-foreground/80 font-mono tracking-wider">ACCOUNT STATUS</span>
+                          </div>
+                        </th>
+                        <th className="py-2.5 px-4 text-center">
+                          <div className="flex flex-col items-center justify-center">
+                            <span className="text-xs font-bold text-foreground">การจัดการ</span>
+                            <span className="text-[10px] text-muted-foreground/80 font-mono tracking-wider">ACTIONS</span>
+                          </div>
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border/60">
+                      {filteredUsers.map((user) => {
+                        const pass = getUserPassword(user.emp_id);
+                        const isPassVisible = visiblePasswords[user.emp_id];
 
-      {/* Users Table */}
-      <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-sm">
-        {loading ? (
-          <div className="p-12 text-center space-y-3">
-            <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
-            <p className="text-xs text-muted-foreground">กำลังโหลดรายชื่อผู้ใช้งานจากฐานข้อมูล PostgreSQL...</p>
-          </div>
-        ) : filteredUsers.length === 0 ? (
-          <div className="p-12 text-center space-y-2">
-            <UserX className="h-10 w-10 text-muted-foreground/50 mx-auto" />
-            <p className="text-sm font-semibold text-foreground">ไม่พบข้อมูลผู้ใช้งาน</p>
-            <p className="text-xs text-muted-foreground">ลองเปลี่ยนคำค้นหาหรือตัวกรองบทบาท</p>
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="border-b border-border bg-muted/40 text-2xs uppercase tracking-wider text-muted-foreground font-semibold">
-                  <th className="p-3.5 pl-6">รหัสพนักงาน</th>
-                  <th className="p-3.5">ชื่อ-นามสกุล</th>
-                  <th className="p-3.5">บทบาท (Role)</th>
-                  <th className="p-3.5">แผนก (Department)</th>
-                  <th className="p-3.5">ทักษะ (Skills)</th>
-                  <th className="p-3.5">สถานะบัญชี</th>
-                  <th className="p-3.5 text-right pr-6">การจัดการ</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border text-xs">
-                {filteredUsers.map((user) => (
-                  <tr key={user.id} className={`hover:bg-muted/30 transition-colors ${!user.is_active ? "bg-destructive/5 opacity-75" : ""}`}>
-                    <td className="p-3.5 pl-6 font-mono font-bold text-primary">
-                      {user.emp_id}
-                    </td>
-                    <td className="p-3.5 font-semibold text-foreground">
-                      {user.name}
-                    </td>
-                    <td className="p-3.5">
-                      {getRoleBadge(user.role)}
-                    </td>
-                    <td className="p-3.5 text-muted-foreground flex items-center gap-1.5">
-                      <Building2 className="h-3.5 w-3.5 text-muted-foreground/70" />
-                      {user.department_name}
-                    </td>
-                    <td className="p-3.5">
-                      <div className="flex flex-wrap gap-1">
-                        {user.skills && user.skills.length > 0 ? (
-                          user.skills.map((s, idx) => (
-                            <Badge key={idx} variant="secondary" className="text-[10px] px-1.5 py-0">
-                              {s}
-                            </Badge>
-                          ))
-                        ) : (
-                          <span className="text-muted-foreground text-2xs">-</span>
-                        )}
-                      </div>
-                    </td>
-                    <td className="p-3.5">
-                      {user.is_active ? (
-                        <span className="inline-flex items-center gap-1 text-emerald-600 font-semibold text-2xs bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
-                          <UserCheck className="h-3 w-3" /> ใช้งานปกติ
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center gap-1 text-destructive font-semibold text-2xs bg-destructive/10 px-2 py-0.5 rounded-full border border-destructive/20">
-                          <UserX className="h-3 w-3" /> ถูกระงับ
-                        </span>
-                      )}
-                    </td>
-                    <td className="p-3.5 text-right pr-6">
-                      <div className="flex items-center justify-end gap-1.5">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 text-muted-foreground hover:text-foreground"
-                          title="แก้ไขสิทธิ์/ข้อมูล"
-                          onClick={() => handleOpenEdit(user)}
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 text-muted-foreground hover:text-amber-600"
-                          title="รีเซ็ตรหัสผ่าน"
-                          onClick={() => {
-                            setSelectedUser(user);
-                            setIsResetOpen(true);
-                          }}
-                        >
-                          <KeyRound className="h-4 w-4" />
-                        </Button>
-
-                        {/* Peer Supervisor Protection Switch */}
-                        <div className="flex items-center gap-1.5 ml-1 pl-2 border-l border-border">
-                          {user.role === "supervisor" ? (
-                            <span title="บัญชีระดับ Supervisor ไม่สามารถถูกระงับได้ เพื่อความปลอดภัยทางระบบ" className="cursor-not-allowed">
-                              <Switch disabled checked={true} />
-                            </span>
-                          ) : (
-                            <Switch
-                              checked={user.is_active}
-                              onCheckedChange={() => handleToggleStatus(user)}
-                              title={user.is_active ? "คลิกเพื่อระงับการใช้งาน" : "คลิกเพื่อเปิดใช้งาน"}
-                            />
-                          )}
-                        </div>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                        return (
+                          <tr key={user.id} className="hover:bg-muted/30 transition-colors">
+                            <td className="py-3.5 px-4 font-mono font-bold text-blue-600 dark:text-blue-400">{user.emp_id}</td>
+                            <td className="py-3.5 px-4 font-bold text-foreground">{user.name}</td>
+                            <td className="py-3.5 px-4">{getRoleBadge(user.role)}</td>
+                            <td className="py-3.5 px-4 text-muted-foreground font-medium">
+                              <span className="flex items-center gap-1.5">
+                                <Building2 className="h-3.5 w-3.5 text-muted-foreground/70" />
+                                {user.department_name}
+                              </span>
+                            </td>
+                            <td className="py-3.5 px-4 font-mono">
+                              <div className="flex items-center gap-1.5 bg-muted/40 px-2.5 py-1 rounded-md border border-border/60 w-fit">
+                                <span className="text-[11px] font-semibold tracking-wider">
+                                  {isPassVisible ? pass : "••••••••"}
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => togglePasswordVisibility(user.emp_id)}
+                                  className="text-muted-foreground hover:text-foreground transition-colors ml-1"
+                                  title={isPassVisible ? "ซ่อนรหัสผ่าน" : "แสดงรหัสผ่าน"}
+                                >
+                                  {isPassVisible ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                                </button>
+                              </div>
+                            </td>
+                            <td className="py-3.5 px-4">
+                              {user.is_active ? (
+                                <Badge variant="outline" className="border-emerald-500/50 text-emerald-700 dark:text-emerald-300 bg-emerald-500/15 font-bold gap-1 px-2.5 py-0.5 rounded-full shadow-2xs">
+                                  <UserCheck className="h-3 w-3 text-emerald-600 dark:text-emerald-400" /> ใช้งานปกติ
+                                </Badge>
+                              ) : (
+                                <Badge variant="outline" className="border-rose-500/50 text-rose-700 dark:text-rose-300 bg-rose-500/15 font-bold gap-1 px-2.5 py-0.5 rounded-full shadow-2xs">
+                                  <UserX className="h-3 w-3 text-rose-600 dark:text-rose-400" /> ถูกระงับ
+                                </Badge>
+                              )}
+                            </td>
+                            <td className="py-3.5 px-4 text-center">
+                              <div className="flex items-center justify-center gap-1.5 mx-auto">
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => handleOpenEdit(user)}
+                                  className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-muted"
+                                  title="แก้ไขข้อมูลและเปลี่ยนรหัสพนักงาน"
+                                >
+                                  <Edit className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => {
+                                    setSelectedUser(user);
+                                    setIsResetOpen(true);
+                                  }}
+                                  className="h-8 w-8 text-muted-foreground hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950"
+                                  title="ตั้งรหัสผ่านใหม่"
+                                >
+                                  <KeyRound className="h-4 w-4" />
+                                </Button>
+                                <Switch
+                                  checked={user.is_active}
+                                  onCheckedChange={() => handleToggleStatus(user)}
+                                  title={user.is_active ? "คลิกเพื่อระงับใช้งาน" : "คลิกเพื่อเปิดใช้งาน"}
+                                />
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          </>
         )}
-      </div>
 
-      {/* MODAL 1: Add New User Direct to PostgreSQL */}
-      <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-lg font-bold">
-              <UserPlus className="h-5 w-5 text-primary" />
-              เพิ่มพนักงานใหม่ลงฐานข้อมูล (Add User)
-            </DialogTitle>
-            <DialogDescription className="text-xs">
-              กรอกข้อมูลพนักงานเพื่อบันทึกลง PostgreSQL Database โดยตรง รหัสผ่านจะถูกแฮชด้วย bcrypt ปลอดภัย
-            </DialogDescription>
-          </DialogHeader>
-
-          <form onSubmit={handleAddUser} className="space-y-3.5 pt-2">
-            <div className="space-y-1">
-              <Label className="text-xs font-semibold">รหัสพนักงาน (Employee ID) *</Label>
-              <Input
-                placeholder="เช่น TECH003, REQ050, SUP002"
-                value={addEmpId}
-                onChange={(e) => setAddEmpId(e.target.value)}
-                className="h-9 text-xs uppercase"
-                required
-              />
-            </div>
-
-            <div className="space-y-1">
-              <Label className="text-xs font-semibold">ชื่อ-นามสกุล *</Label>
-              <Input
-                placeholder="เช่น สมชาย สายไฟ"
-                value={addName}
-                onChange={(e) => setAddName(e.target.value)}
-                className="h-9 text-xs"
-                required
-              />
-            </div>
-
-            <div className="space-y-1">
-              <Label className="text-xs font-semibold">รหัสผ่านเริ่มต้น (Default Password) *</Label>
-              <Input
-                type="password"
-                placeholder="••••••••"
-                value={addPassword}
-                onChange={(e) => setAddPassword(e.target.value)}
-                className="h-9 text-xs"
-                required
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <Label className="text-xs font-semibold">บทบาท (Role) *</Label>
-                <Select value={addRole} onValueChange={setAddRole}>
-                  <SelectTrigger className="h-9 text-xs">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="technician">🛠️ ช่างซ่อม (Technician)</SelectItem>
-                    <SelectItem value="supervisor">👑 หัวหน้าช่าง (Supervisor)</SelectItem>
-                    <SelectItem value="requester">📋 ผู้แจ้งซ่อม (Requester)</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-1">
-                <Label className="text-xs font-semibold">แผนก (Department)</Label>
-                <Select value={addDeptId} onValueChange={setAddDeptId}>
-                  <SelectTrigger className="h-9 text-xs">
-                    <SelectValue placeholder="เลือกแผนก" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {departments.map((d) => (
-                      <SelectItem key={d.id} value={String(d.id)}>
-                        {d.dept_name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            <div className="space-y-1">
-              <Label className="text-xs font-semibold">ทักษะความเชี่ยวชาญ (Skills)</Label>
-              <Input
-                placeholder="เช่น Electrical, PLC, Hydraulics (คั่นด้วยจุลภาค ,)"
-                value={addSkills}
-                onChange={(e) => setAddSkills(e.target.value)}
-                className="h-9 text-xs"
-              />
-            </div>
-
-            <DialogFooter className="pt-2">
-              <Button type="button" variant="ghost" onClick={() => setIsAddOpen(false)} size="sm">
-                ยกเลิก
-              </Button>
-              <Button type="submit" variant="industrial" disabled={submitting} size="sm" className="font-bold">
-                {submitting ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <UserPlus className="h-4 w-4 mr-1" />} บันทึก
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
-
-      {/* MODAL 2: Edit User Profile & Role */}
-      <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-lg font-bold">
-              <Edit className="h-5 w-5 text-primary" />
-              แก้ไขสิทธิ์และข้อมูลพนักงาน: {selectedUser?.emp_id}
-            </DialogTitle>
-            <DialogDescription className="text-xs">
-              ปรับเปลี่ยนบทบาทการใช้งาน, ย้ายแผนก หรือทักษะของพนักงาน
-            </DialogDescription>
-          </DialogHeader>
-
-          <form onSubmit={handleSaveEdit} className="space-y-3.5 pt-2">
-            <div className="space-y-1">
-              <Label className="text-xs font-semibold">ชื่อ-นามสกุล</Label>
-              <Input
-                value={editName}
-                onChange={(e) => setEditName(e.target.value)}
-                className="h-9 text-xs"
-                required
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <Label className="text-xs font-semibold">ปรับเปลี่ยนบทบาท (Role)</Label>
-                <Select
-                  value={editRole}
-                  onValueChange={setEditRole}
-                  disabled={selectedUser?.emp_id === currentUser?.emp_id}
-                >
-                  <SelectTrigger className="h-9 text-xs disabled:opacity-75 disabled:cursor-not-allowed">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="technician">🛠️ ช่างซ่อม (Technician)</SelectItem>
-                    <SelectItem value="supervisor">👑 หัวหน้าช่าง (Supervisor)</SelectItem>
-                    <SelectItem value="requester">📋 ผู้แจ้งซ่อม (Requester)</SelectItem>
-                  </SelectContent>
-                </Select>
-                {selectedUser?.emp_id === currentUser?.emp_id && (
-                  <p className="text-[10px] text-amber-600 dark:text-amber-400 font-medium leading-tight flex items-start gap-1 mt-1">
-                    <ShieldAlert className="h-3 w-3 shrink-0 mt-0.5" />
-                    ไม่อนุญาตให้ปรับลด/เปลี่ยนบทบาทตนเอง เพื่อป้องกันการสูญเสียสิทธิ์บริหารจัดการ
+        {/* VIEW 2: FULL-PAGE ADD USER FORM */}
+        {viewMode === "add" && (
+          <form onSubmit={handleAddUserSubmit} className="space-y-6">
+            {/* Action Header Bar */}
+            <div className="bg-card p-4 md:p-6 rounded-2xl border shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <Button type="button" variant="outline" size="icon" onClick={handleBackToList} className="h-9 w-9 shrink-0">
+                  <ArrowLeft className="h-4 w-4" />
+                </Button>
+                <div>
+                  <h2 className="text-xl font-bold tracking-tight text-foreground flex items-center gap-2">
+                    <UserPlus className="w-5 h-5 text-primary" /> เพิ่มพนักงานใหม่ (Create New Employee)
+                  </h2>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    กำหนดรหัสพนักงาน ชื่อ-นามสกุล แผนก บทบาท และสร้างบัญชีผู้ใช้เข้าสู่ระบบ
                   </p>
-                )}
+                </div>
               </div>
 
-              <div className="space-y-1">
-                <Label className="text-xs font-semibold">ย้ายแผนก (Department)</Label>
-                <Select value={editDeptId} onValueChange={setEditDeptId}>
-                  <SelectTrigger className="h-9 text-xs">
-                    <SelectValue placeholder="เลือกแผนก" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {departments.map((d) => (
-                      <SelectItem key={d.id} value={String(d.id)}>
-                        {d.dept_name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+              <div className="flex items-center gap-2">
+                <Button type="button" variant="ghost" onClick={handleBackToList} disabled={submitting}>
+                  ยกเลิก
+                </Button>
+                <Button type="submit" variant="industrial" disabled={submitting} className="font-bold gap-2">
+                  {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                  บันทึกสร้างพนักงานใหม่
+                </Button>
               </div>
             </div>
 
-            <div className="space-y-1">
-              <Label className="text-xs font-semibold">ทักษะความเชี่ยวชาญ (Skills)</Label>
-              <Input
-                value={editSkills}
-                onChange={(e) => setEditSkills(e.target.value)}
-                className="h-9 text-xs"
-                placeholder="คั่นด้วยจุลภาค ,"
-              />
-            </div>
+            {/* User Info Card */}
+            <Card className="border shadow-xs">
+              <CardHeader className="pb-3 border-b bg-card/60">
+                <CardTitle className="text-base font-bold flex items-center gap-2">
+                  <Info className="w-4 h-4 text-primary" /> ข้อมูลบัญชีผู้ใช้ (Account Profile)
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="pt-4 space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {/* Emp ID */}
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-semibold">
+                      รหัสพนักงาน (Employee ID) <span className="text-destructive">*</span>
+                    </Label>
+                    <Input
+                      placeholder="เช่น TECH004 หรือ REQ050"
+                      value={addEmpId}
+                      onChange={(e) => setAddEmpId(e.target.value)}
+                      className="h-9 text-xs font-mono"
+                      required
+                    />
+                    <p className="text-[11px] text-muted-foreground">ภาษาอังกฤษและตัวเลข ใช้สลับบทบาท/เข้าสู่ระบบ</p>
+                  </div>
 
-            <DialogFooter className="pt-2">
-              <Button type="button" variant="ghost" onClick={() => setIsEditOpen(false)} size="sm">
+                  {/* Name */}
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-semibold">
+                      ชื่อ-นามสกุล <span className="text-destructive">*</span>
+                    </Label>
+                    <Input
+                      placeholder="เช่น สมชาย ใจดี"
+                      value={addName}
+                      onChange={(e) => setAddName(e.target.value)}
+                      className="h-9 text-xs"
+                      required
+                    />
+                    <p className="text-[11px] text-muted-foreground">ชื่อแสดงผลในใบแจ้งซ่อมและรายงาน</p>
+                  </div>
+
+                  {/* Password */}
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-semibold">
+                      รหัสผ่าน (Password) <span className="text-destructive">*</span>
+                    </Label>
+                    <div className="relative">
+                      <Input
+                        type={showAddPassword ? "text" : "password"}
+                        placeholder="อย่างน้อย 6 ตัวอักษร"
+                        value={addPassword}
+                        onChange={(e) => setAddPassword(e.target.value)}
+                        className="h-9 text-xs font-mono pr-9"
+                        required
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowAddPassword(!showAddPassword)}
+                        className="absolute right-2.5 top-2.5 text-muted-foreground hover:text-foreground"
+                      >
+                        {showAddPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </button>
+                    </div>
+                    <p className="text-[11px] text-muted-foreground">ค่าเริ่มต้น: demo1234</p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+                  {/* Role */}
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-semibold">บทบาทในระบบ (Role)</Label>
+                    <Select value={addRole} onValueChange={setAddRole}>
+                      <SelectTrigger className="h-9 text-xs">
+                        <SelectValue placeholder="เลือกบทบาท" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {rolesList.map((r) => (
+                          <SelectItem key={r.id} value={r.code}>
+                            {r.name} ({r.code})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Department */}
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-semibold">สังกัดแผนก (Department)</Label>
+                    <Select value={addDeptId} onValueChange={setAddDeptId}>
+                      <SelectTrigger className="h-9 text-xs">
+                        <SelectValue placeholder="เลือกแผนก" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {departments.map((d) => (
+                          <SelectItem key={d.id} value={String(d.id)}>
+                            {d.dept_name} ({d.dept_code})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Bottom Actions */}
+            <div className="flex items-center justify-end gap-3 bg-card p-4 rounded-xl border shadow-sm">
+              <Button type="button" variant="ghost" onClick={handleBackToList} disabled={submitting}>
                 ยกเลิก
               </Button>
-              <Button type="submit" variant="industrial" disabled={submitting} size="sm" className="font-bold">
-                {submitting ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <CheckCircle2 className="h-4 w-4 mr-1" />} บันทึกการเปลี่ยนแปลง
+              <Button type="submit" variant="industrial" disabled={submitting} className="font-bold gap-2">
+                {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                บันทึกสร้างพนักงานใหม่
               </Button>
-            </DialogFooter>
+            </div>
           </form>
-        </DialogContent>
-      </Dialog>
+        )}
 
-      {/* MODAL 3: Reset Password */}
-      <Dialog open={isResetOpen} onOpenChange={setIsResetOpen}>
-        <DialogContent className="sm:max-w-sm">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-lg font-bold">
-              <KeyRound className="h-5 w-5 text-amber-500" />
-              รีเซ็ตรหัสผ่านใหม่: {selectedUser?.name}
-            </DialogTitle>
-            <DialogDescription className="text-xs">
-              ระบุรหัสผ่านใหม่สำหรับรหัสพนักงาน {selectedUser?.emp_id} ระบบจะเข้ารหัส bcrypt ปลอดภัย
-            </DialogDescription>
-          </DialogHeader>
+        {/* VIEW 3: FULL-PAGE EDIT USER FORM (Allows changing emp_id!) */}
+        {viewMode === "edit" && selectedUser && (
+          <form onSubmit={handleSaveEditSubmit} className="space-y-6">
+            {/* Action Header Bar */}
+            <div className="bg-card p-4 md:p-6 rounded-2xl border shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <Button type="button" variant="outline" size="icon" onClick={handleBackToList} className="h-9 w-9 shrink-0">
+                  <ArrowLeft className="h-4 w-4" />
+                </Button>
+                <div>
+                  <h2 className="text-xl font-bold tracking-tight text-foreground flex items-center gap-2">
+                    <Edit className="w-5 h-5 text-blue-500" /> แก้ไขข้อมูลพนักงาน: <span className="text-primary">{selectedUser.name}</span>
+                  </h2>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    ปรับเปลี่ยนรหัสพนักงาน ชื่อ-นามสกุล ย้ายแผนก หรือเปลี่ยนบทบาทการใช้งาน
+                  </p>
+                </div>
+              </div>
 
-          <form onSubmit={handleResetPasswordSubmit} className="space-y-3.5 pt-2">
-            <div className="space-y-1">
-              <Label className="text-xs font-semibold">รหัสผ่านใหม่ (New Password)</Label>
-              <Input
-                type="password"
-                placeholder="อย่างน้อย 4 ตัวอักษร"
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-                className="h-9 text-xs"
-                required
-              />
+              <div className="flex items-center gap-2">
+                <Button type="button" variant="ghost" onClick={handleBackToList} disabled={submitting}>
+                  ยกเลิก
+                </Button>
+                <Button type="submit" variant="industrial" disabled={submitting} className="font-bold gap-2">
+                  {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                  บันทึกการเปลี่ยนแปลง
+                </Button>
+              </div>
             </div>
 
-            <DialogFooter className="pt-2">
-              <Button type="button" variant="ghost" onClick={() => setIsResetOpen(false)} size="sm">
+            {/* Profile Info Card */}
+            <Card className="border shadow-xs">
+              <CardHeader className="pb-3 border-b bg-card/60">
+                <CardTitle className="text-base font-bold flex items-center gap-2">
+                  <Info className="w-4 h-4 text-primary" /> ข้อมูลส่วนตัวและรหัสพนักงาน (Editable Profile)
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="pt-4 space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Emp ID (Editable!) */}
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-semibold">
+                      รหัสพนักงาน (Employee ID) <span className="text-destructive">*</span>
+                    </Label>
+                    <Input
+                      placeholder="เช่น TECH001"
+                      value={editEmpId}
+                      onChange={(e) => setEditEmpId(e.target.value)}
+                      className="h-9 text-xs font-mono font-bold text-primary"
+                      required
+                    />
+                    <p className="text-[11px] text-muted-foreground">สามารถแก้ไขรหัสพนักงานได้ (ระบบจะตรวจสอบว่าไม่ซ้ำกับผู้อื่น)</p>
+                  </div>
+
+                  {/* Name */}
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-semibold">
+                      ชื่อ-นามสกุล <span className="text-destructive">*</span>
+                    </Label>
+                    <Input
+                      placeholder="ชื่อ-นามสกุลพนักงาน"
+                      value={editName}
+                      onChange={(e) => setEditName(e.target.value)}
+                      className="h-9 text-xs"
+                      required
+                    />
+                    <p className="text-[11px] text-muted-foreground">ชื่อแสดงผลในระบบซ่อมบำรุง</p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+                  {/* Role */}
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-semibold">ปรับเปลี่ยนบทบาท (Role)</Label>
+                    <Select value={editRole} onValueChange={setEditRole}>
+                      <SelectTrigger className="h-9 text-xs">
+                        <SelectValue placeholder="เลือกบทบาท" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {rolesList.map((r) => (
+                          <SelectItem key={r.id} value={r.code}>
+                            {r.name} ({r.code})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {selectedUser.emp_id === currentUser?.emp_id && (
+                      <p className="text-[11px] text-amber-600 dark:text-amber-400 flex items-center gap-1 font-semibold mt-1">
+                        <AlertTriangle className="h-3 w-3" /> ไม่อนุญาตให้ปรับลด/เปลี่ยนบทบาทตนเอง
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Department */}
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-semibold">ย้ายแผนก (Department)</Label>
+                    <Select value={editDeptId} onValueChange={setEditDeptId}>
+                      <SelectTrigger className="h-9 text-xs">
+                        <SelectValue placeholder="เลือกแผนก" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {departments.map((d) => (
+                          <SelectItem key={d.id} value={String(d.id)}>
+                            {d.dept_name} ({d.dept_code})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Bottom Actions */}
+            <div className="flex items-center justify-end gap-3 bg-card p-4 rounded-xl border shadow-sm">
+              <Button type="button" variant="ghost" onClick={handleBackToList} disabled={submitting}>
                 ยกเลิก
               </Button>
-              <Button type="submit" variant="industrial" disabled={submitting} size="sm" className="font-bold bg-amber-600 hover:bg-amber-700">
-                {submitting ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <KeyRound className="h-4 w-4 mr-1" />} ยืนยันตั้งรหัสผ่านใหม่
+              <Button type="submit" variant="industrial" disabled={submitting} className="font-bold gap-2">
+                {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                บันทึกการเปลี่ยนแปลง
               </Button>
-            </DialogFooter>
+            </div>
           </form>
-        </DialogContent>
-      </Dialog>
-    </div>
+        )}
+
+        {/* MODAL: RESET PASSWORD (STAYS AS MODAL DIALOG) */}
+        <Dialog open={isResetOpen} onOpenChange={setIsResetOpen}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-amber-600 dark:text-amber-400">
+                <KeyRound className="h-5 w-5" /> ตั้งรหัสผ่านใหม่: {selectedUser?.name}
+              </DialogTitle>
+              <DialogDescription className="text-xs">
+                รหัสพนักงาน: <span className="font-mono font-bold text-foreground">{selectedUser?.emp_id}</span>
+              </DialogDescription>
+            </DialogHeader>
+
+            <form onSubmit={handleResetPasswordSubmit} className="space-y-4 py-2">
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold">รหัสผ่านใหม่ (New Password)</Label>
+                <div className="relative">
+                  <Input
+                    type={showResetPassword ? "text" : "password"}
+                    placeholder="กรอกรหัสผ่านใหม่..."
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    className="h-9 text-xs font-mono pr-9"
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowResetPassword(!showResetPassword)}
+                    className="absolute right-2.5 top-2.5 text-muted-foreground hover:text-foreground"
+                  >
+                    {showResetPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+              </div>
+
+              <DialogFooter className="pt-2">
+                <Button type="button" variant="outline" size="sm" onClick={() => setIsResetOpen(false)}>
+                  ยกเลิก
+                </Button>
+                <Button type="submit" variant="industrial" size="sm" disabled={submitting} className="font-bold">
+                  {submitting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : "บันทึกรหัสผ่านใหม่"}
+                </Button>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
+      </div>
     </AppLayout>
   );
 };

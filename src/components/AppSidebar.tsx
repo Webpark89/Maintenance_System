@@ -23,6 +23,7 @@ import {
   LogOut,
   User,
   Users,
+  ShieldCheck,
 } from "lucide-react";
 import { useRequests } from "@/lib/requestStore";
 import { getCurrentUser, getUserDefaultRoute, refreshCurrentUserFromApi, UserPayload } from "@/lib/auth";
@@ -102,6 +103,12 @@ export function AppSidebar() {
       to: "/users",
       label: "จัดการผู้ใช้งาน",
       icon: Users,
+      roles: ["supervisor"],
+    },
+    {
+      to: "/roles",
+      label: "จัดการบทบาท & สิทธิ์",
+      icon: ShieldCheck,
       roles: ["supervisor"],
     },
   ];

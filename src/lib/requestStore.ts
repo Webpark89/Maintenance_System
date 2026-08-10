@@ -181,7 +181,28 @@ function notifyListeners() {
   listeners.forEach((l) => l());
 }
 
-// Backward Compatibility requestStore Object for Components
+export function getAllTechniciansList(): TechnicianUser[] {
+  try {
+    const raw = localStorage.getItem("fixflow_custom_technicians");
+    if (raw) {
+      const customList = JSON.parse(raw);
+      const merged = [...TECHNICIANS_LIST];
+      customList.forEach((c: any) => {
+        if (!merged.some((m) => m.emp_id === c.emp_id) && (c.role === "technician" || c.role === "supervisor")) {
+          merged.push({
+            emp_id: c.emp_id,
+            name: c.name,
+            department: c.department || "แผนกซ่อมบำรุงโรงงาน",
+            skills: c.skills || [],
+          });
+        }
+      });
+      return merged;
+    }
+  } catch (e) {}
+  return TECHNICIANS_LIST;
+}
+
 export const requestStore = {
   add: (data: any) => {
     createRequestApi({
@@ -221,8 +242,9 @@ export const requestStore = {
     updateRequestStatusApi(id, 'cancelled' as WorkOrderStatus).catch(() => {});
   },
   assignTechnician: (id: string, techId: string, assignedBy?: string) => {
-    const tech = TECHNICIANS_LIST.find((t) => t.emp_id === techId);
-    const techName = tech ? tech.name : techId;
+    const allTechs = getAllTechniciansList();
+    const tech = allTechs.find((t) => t.emp_id === techId);
+    const techName = tech ? tech.name : getTechnicianName(techId, techId);
 
     globalRequests = globalRequests.map((r) => {
       if (r.request_id === id) {
@@ -236,7 +258,8 @@ export const requestStore = {
     });
     notifyListeners();
 
-    const techNumericId = techId === "TECH002" ? 2 : 1;
+    const match = techId.match(/\d+/);
+    const techNumericId = match ? parseInt(match[0], 10) : 1;
     assignTechnicianApi(id, techNumericId).catch(() => {});
   },
   approveRequisition: (id: string, approvedBy?: string, approved?: boolean) => {
@@ -320,7 +343,7 @@ export async function fetchTechniciansFromApi(): Promise<TechnicianUser[]> {
 }
 
 export function useTechnicians() {
-  const [technicians, setTechnicians] = useState<TechnicianUser[]>(TECHNICIANS_LIST);
+  const [technicians, setTechnicians] = useState<TechnicianUser[]>(getAllTechniciansList);
 
   useEffect(() => {
     let isMounted = true;

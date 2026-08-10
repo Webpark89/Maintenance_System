@@ -186,6 +186,7 @@ export interface TechnicianUser {
 export const TECHNICIANS_LIST: TechnicianUser[] = [
   { emp_id: "TECH001", name: "บอส", department: "แผนกซ่อมบำรุงโรงงาน", skills: ["Electrical", "PLC", "Control Systems"] },
   { emp_id: "TECH002", name: "ตะวัน", department: "แผนกซ่อมบำรุงโรงงาน", skills: ["Mechanical", "Pneumatics", "Hydraulics"] },
+  { emp_id: "TECH003", name: "เฟิร์น", department: "แผนกซ่อมบำรุงโรงงาน", skills: ["Electrical", "Automation"] },
 ];
 
 export interface WorkRequest {
@@ -468,12 +469,28 @@ export const TECHNICIAN_MAP: Record<string, Technician> = {
     name: "ตะวัน",
     department: "แผนกซ่อมบำรุงโรงงาน",
   },
+  TECH003: {
+    technician_id: "TECH003",
+    name: "เฟิร์น",
+    department: "แผนกซ่อมบำรุงโรงงาน",
+  },
 };
 
 export function getTechnicianName(technicianId: string | null | undefined, fallbackName?: string | null): string {
-  if (fallbackName) return fallbackName;
+  if (fallbackName && fallbackName !== technicianId) return fallbackName;
   if (!technicianId) return "-";
-  return TECHNICIAN_MAP[technicianId]?.name || technicianId;
+  if (TECHNICIAN_MAP[technicianId]) {
+    return TECHNICIAN_MAP[technicianId].name;
+  }
+  try {
+    const raw = localStorage.getItem("fixflow_custom_technicians");
+    if (raw) {
+      const list = JSON.parse(raw);
+      const found = list.find((u: any) => u.emp_id === technicianId);
+      if (found?.name) return found.name;
+    }
+  } catch (e) {}
+  return fallbackName || technicianId;
 }
 
 export function getTechnicianDepartment(technicianId: string | null | undefined): string {

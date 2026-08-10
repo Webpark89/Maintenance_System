@@ -1,11 +1,14 @@
 import { api } from "./api";
 
-export type UserRole = "technician" | "requester" | "supervisor";
+export type UserRole = "technician" | "requester" | "supervisor" | string;
 
 export interface UserPayload {
   emp_id: string;
   name: string;
   role: UserRole;
+  role_id?: number | null;
+  role_name?: string;
+  permissions?: string[];
   department: string;
   skills: string[];
   token?: string;
@@ -33,6 +36,9 @@ export async function refreshCurrentUserFromApi(): Promise<UserPayload | null> {
         emp_id: user.emp_id,
         name: user.name,
         role: user.role as UserRole,
+        role_id: user.role_id,
+        role_name: user.role_name,
+        permissions: user.permissions || [],
         department: user.department,
         skills: user.skills || [],
         token: current.token,

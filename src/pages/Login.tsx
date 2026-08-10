@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Wrench, ShieldCheck, Loader2, Fingerprint, Lock, User, LogIn, CheckCircle2, CloudRain } from "lucide-react";
+import { Wrench, ShieldCheck, Loader2, Fingerprint, Lock, User, LogIn, CheckCircle2, CloudRain, Eye, EyeOff } from "lucide-react";
 import { toast } from "@/components/ui/sonner";
 import { api } from "@/lib/api";
 import { connectSocket } from "@/lib/socket";
@@ -15,6 +15,7 @@ const Login = () => {
   const navigate = useNavigate();
   const [username, setUsername] = useState("TECH001");
   const [password, setPassword] = useState("demo1234");
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
   // Clear stale session on login page load
@@ -264,15 +265,25 @@ const Login = () => {
                 <Lock className="h-3.5 w-3.5 text-primary" />
                 รหัสผ่าน (Password)
               </Label>
-              <Input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
-                className="h-11 text-sm bg-card border-border"
-                required
-              />
+              <div className="relative">
+                <Input
+                  id="password"
+                  type={showPassword ? "text" : "password"}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                  className="h-11 text-sm bg-card border-border pr-10"
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors p-1"
+                  title={showPassword ? "ซ่อนรหัสผ่าน" : "แสดงรหัสผ่าน"}
+                >
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
             </div>
 
             <Button type="submit" variant="industrial" size="lg" className="w-full h-11 text-xs font-bold gap-2 mt-2 shadow-sm" disabled={loading}>

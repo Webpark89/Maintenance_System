@@ -143,14 +143,14 @@ export async function updateRequestStatus(req: AuthenticatedRequest, res: Respon
       return res.status(404).json({ success: false, message: 'ไม่พบใบแจ้งซ่อมนี้ในระบบ' });
     }
 
-    // Technician RBAC Guard: Technicians can only update status of jobs assigned to them or unassigned jobs
+    // Technician RBAC Guard: Technicians can strictly only update status of jobs assigned to them by Supervisor
     if (req.user?.role === 'technician') {
       const userEmpId = req.user?.empId;
       const assignedEmpId = request.users_maintenance_requests_assigned_technician_idTousers?.emp_id;
-      if (assignedEmpId && assignedEmpId !== userEmpId) {
+      if (!assignedEmpId || assignedEmpId !== userEmpId) {
         return res.status(403).json({
           success: false,
-          message: 'ปฏิเสธการทำรายการ: คุณสามารถอัปเดตสถานะได้เฉพาะงานซ่อมที่ได้รับมอบหมายให้ตนเองเท่านั้น',
+          message: 'ปฏิเสธการทำรายการ: ต้องให้ Supervisor เป็นผู้กดเลือกมอบหมายช่างผู้รับผิดชอบก่อนเท่านั้น ช่างซ่อมไม่สามารถอัปเดตงานที่ยังไม่ได้มอบหมายหรือการ์ดของช่างคนอื่นได้',
         });
       }
     }

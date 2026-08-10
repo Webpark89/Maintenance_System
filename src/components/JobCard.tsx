@@ -366,7 +366,11 @@ export function JobCard({
                 </Select>
               </div>
             ) : (
-              <span className="font-semibold text-foreground truncate min-w-0 text-right">{request.assigned_to ? getTechnicianName(request.assigned_to, request.assigned_technician_name) : "ยังไม่ได้มอบหมาย"}</span>
+              <span className="font-semibold text-foreground truncate min-w-0 text-right">
+                {request.assigned_to ? getTechnicianName(request.assigned_to, request.assigned_technician_name) : (
+                  <span className="text-amber-600 dark:text-amber-400 font-bold bg-amber-500/10 px-1.5 py-0.5 rounded text-[11px]">⏳ รอ Supervisor มอบหมายช่าง</span>
+                )}
+              </span>
             )}
           </div>
 
@@ -375,7 +379,7 @@ export function JobCard({
             <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">
               {CATEGORY_LABEL[request.category]}
             </span>
-            {showAccept && request.status === "open" && !isCompleted ? (
+            {showAccept && isSupervisor && request.status === "open" && !isCompleted ? (
               <Button
                 size="sm"
                 variant="industrial"

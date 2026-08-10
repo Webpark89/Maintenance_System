@@ -102,16 +102,47 @@ model spare_parts {
   work_order_requisitions work_order_requisitions[]
 }
 
+model roles {
+  id               Int                @id @default(autoincrement())
+  code             String             @unique @db.VarChar(50)
+  name             String             @db.VarChar(100)
+  description      String?
+  is_system        Boolean            @default(false)
+  created_at       DateTime?          @default(now()) @db.Timestamp(6)
+  users            users[]
+  role_permissions role_permissions[]
+}
+
+model permissions {
+  id               Int                @id @default(autoincrement())
+  code             String             @unique @db.VarChar(50)
+  name             String             @db.VarChar(100)
+  module           String             @db.VarChar(50)
+  created_at       DateTime?          @default(now()) @db.Timestamp(6)
+  role_permissions role_permissions[]
+}
+
+model role_permissions {
+  role_id       Int
+  permission_id Int
+  roles         roles       @relation(fields: [role_id], references: [id], onDelete: Cascade)
+  permissions   permissions @relation(fields: [permission_id], references: [id], onDelete: Cascade)
+
+  @@id([role_id, permission_id])
+}
+
 model users {
   id                                                                      Int                       @id @default(autoincrement())
   emp_id                                                                  String                    @unique @db.VarChar(30)
   name                                                                    String                    @db.VarChar(100)
   password_hash                                                           String                    @db.VarChar(255)
   role                                                                    user_role                 @default(technician)
+  role_id                                                                 Int?
   department_id                                                           Int?
   skills                                                                  String[]
   is_active                                                               Boolean?                  @default(true)
   created_at                                                              DateTime?                 @default(now()) @db.Timestamp(6)
+  roles                                                                   roles?                    @relation(fields: [role_id], references: [id], onDelete: SetNull)
   maintenance_requests_maintenance_requests_assigned_technician_idTousers maintenance_requests[]    @relation("maintenance_requests_assigned_technician_idTousers")
   maintenance_requests_maintenance_requests_cancel_requested_by_idTousers maintenance_requests[]    @relation("maintenance_requests_cancel_requested_by_idTousers")
   maintenance_requests_maintenance_requests_reported_by_idTousers         maintenance_requests[]    @relation("maintenance_requests_reported_by_idTousers")

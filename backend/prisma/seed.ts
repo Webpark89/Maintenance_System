@@ -6,6 +6,106 @@ async function seed() {
 
   const passwordHash = await bcrypt.hash('demo1234', 10);
 
+  // 0. Permissions Seed
+  const permissionDefs = [
+    { code: 'work_order:read', name: 'ดูงานซ่อม', module: 'work_order' },
+    { code: 'work_order:create', name: 'แจ้งซ่อมใหม่', module: 'work_order' },
+    { code: 'work_order:assign', name: 'มอบหมายช่าง', module: 'work_order' },
+    { code: 'work_order:assess', name: 'ประเมิน/บันทึกผลซ่อม', module: 'work_order' },
+    { code: 'work_order:approve_cancel', name: 'อนุมัติยกเลิกงาน', module: 'work_order' },
+    { code: 'work_order:delete', name: 'ลบงานซ่อม', module: 'work_order' },
+    { code: 'requisition:request', name: 'เบิกอะไหล่', module: 'requisition' },
+    { code: 'requisition:approve', name: 'อนุมัติเบิกอะไหล่', module: 'requisition' },
+    { code: 'asset:read', name: 'ดูรายการเครื่องจักร', module: 'asset' },
+    { code: 'asset:create', name: 'เพิ่มเครื่องจักร/สร้าง QR', module: 'asset' },
+    { code: 'asset:edit', name: 'แก้ไขข้อมูลเครื่องจักร', module: 'asset' },
+    { code: 'asset:delete', name: 'ลบเครื่องจักร', module: 'asset' },
+    { code: 'user:read', name: 'ดูรายชื่อผู้ใช้', module: 'user' },
+    { code: 'user:manage', name: 'จัดการผู้ใช้งาน', module: 'user' },
+    { code: 'role:manage', name: 'จัดการบทบาทและสิทธิ์', module: 'role' },
+    { code: 'dashboard:view', name: 'ดู Dashboard สถิติ', module: 'dashboard' },
+  ];
+
+  const permissionsMap: Record<string, number> = {};
+  for (const p of permissionDefs) {
+    const created = await prisma.permissions.upsert({
+      where: { code: p.code },
+      update: { name: p.name, module: p.module },
+      create: p,
+    });
+    permissionsMap[p.code] = created.id;
+  }
+
+  // 0.1 Roles Seed (System Roles)
+  const roleSupervisor = await prisma.roles.upsert({
+    where: { code: 'supervisor' },
+    update: { name: 'หัวหน้าช่าง', is_system: true },
+    create: {
+      code: 'supervisor',
+      name: 'หัวหน้าช่าง',
+      description: 'สิทธิ์การใช้งานครบทุกส่วนในระบบ รวมถึงมอบหมายงานและอนุมัติ',
+      is_system: true,
+    },
+  });
+
+  const roleTechnician = await prisma.roles.upsert({
+    where: { code: 'technician' },
+    update: { name: 'ช่างซ่อม', is_system: true },
+    create: {
+      code: 'technician',
+      name: 'ช่างซ่อม',
+      description: 'รับงานซ่อม บันทึกผลการซ่อม เบิกอะไหล่ และจัดการเครื่องจักร',
+      is_system: true,
+    },
+  });
+
+  const roleRequester = await prisma.roles.upsert({
+    where: { code: 'requester' },
+    update: { name: 'ผู้แจ้งซ่อม', is_system: true },
+    create: {
+      code: 'requester',
+      name: 'ผู้แจ้งซ่อม',
+      description: 'สร้างใบแจ้งซ่อมใหม่และติดตามสถานะงานของตนเอง',
+      is_system: true,
+    },
+  });
+
+  // Assign All permissions to Supervisor
+  for (const pId of Object.values(permissionsMap)) {
+    await prisma.role_permissions.upsert({
+      where: { role_id_permission_id: { role_id: roleSupervisor.id, permission_id: pId } },
+      update: {},
+      create: { role_id: roleSupervisor.id, permission_id: pId },
+    });
+  }
+
+  // Assign Technician permissions
+  const techPermCodes = [
+    'work_order:read', 'work_order:create', 'work_order:assess',
+    'requisition:request', 'asset:read', 'asset:create', 'asset:edit',
+  ];
+  for (const code of techPermCodes) {
+    if (permissionsMap[code]) {
+      await prisma.role_permissions.upsert({
+        where: { role_id_permission_id: { role_id: roleTechnician.id, permission_id: permissionsMap[code] } },
+        update: {},
+        create: { role_id: roleTechnician.id, permission_id: permissionsMap[code] },
+      });
+    }
+  }
+
+  // Assign Requester permissions
+  const reqPermCodes = ['work_order:read', 'work_order:create'];
+  for (const code of reqPermCodes) {
+    if (permissionsMap[code]) {
+      await prisma.role_permissions.upsert({
+        where: { role_id_permission_id: { role_id: roleRequester.id, permission_id: permissionsMap[code] } },
+        update: {},
+        create: { role_id: roleRequester.id, permission_id: permissionsMap[code] },
+      });
+    }
+  }
+
   // 1. Departments Seed
   const deptMaint = await prisma.departments.upsert({
     where: { dept_code: 'DEPT-MAINT' },
@@ -22,12 +122,13 @@ async function seed() {
   // 2. Users Seed
   const tech1 = await prisma.users.upsert({
     where: { emp_id: 'TECH001' },
-    update: { password_hash: passwordHash },
+    update: { password_hash: passwordHash, role_id: roleTechnician.id },
     create: {
       emp_id: 'TECH001',
       name: 'บอส',
       password_hash: passwordHash,
       role: 'technician',
+      role_id: roleTechnician.id,
       department_id: deptMaint.id,
       skills: ['Electrical', 'PLC', 'Control Systems'],
     },
@@ -35,12 +136,13 @@ async function seed() {
 
   const tech2 = await prisma.users.upsert({
     where: { emp_id: 'TECH002' },
-    update: { password_hash: passwordHash },
+    update: { password_hash: passwordHash, role_id: roleTechnician.id },
     create: {
       emp_id: 'TECH002',
       name: 'ตะวัน',
       password_hash: passwordHash,
       role: 'technician',
+      role_id: roleTechnician.id,
       department_id: deptMaint.id,
       skills: ['Mechanical', 'Pneumatics', 'Hydraulics'],
     },
@@ -48,12 +150,13 @@ async function seed() {
 
   const super1 = await prisma.users.upsert({
     where: { emp_id: 'SUP001' },
-    update: { password_hash: passwordHash },
+    update: { password_hash: passwordHash, role_id: roleSupervisor.id },
     create: {
       emp_id: 'SUP001',
       name: 'อาร์ม',
       password_hash: passwordHash,
       role: 'supervisor',
+      role_id: roleSupervisor.id,
       department_id: deptMaint.id,
       skills: ['Management', 'QC', 'Safety'],
     },
@@ -61,12 +164,13 @@ async function seed() {
 
   const req1 = await prisma.users.upsert({
     where: { emp_id: 'REQ042' },
-    update: { password_hash: passwordHash, name: 'โฟล์ค' },
+    update: { password_hash: passwordHash, name: 'โฟล์ค', role_id: roleRequester.id },
     create: {
       emp_id: 'REQ042',
       name: 'โฟล์ค',
       password_hash: passwordHash,
       role: 'requester',
+      role_id: roleRequester.id,
       department_id: deptProd.id,
       skills: ['Production Line 1'],
     },

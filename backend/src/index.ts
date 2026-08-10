@@ -15,6 +15,8 @@ import signatureRoutes from './routes/signatureRoutes.js';
 import analyticsRoutes from './routes/analyticsRoutes.js';
 import uploadRoutes from './routes/uploadRoutes.js';
 import userRoutes from './routes/userRoutes.js';
+import roleRoutes from './routes/roleRoutes.js';
+import permissionRoutes from './routes/permissionRoutes.js';
 
 dotenv.config();
 
@@ -84,6 +86,8 @@ app.get('/api/health', (req: Request, res: Response) => {
 // API Routes Mapping
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/users', userRoutes);
+app.use('/api/v1/roles', roleRoutes);
+app.use('/api/v1/permissions', permissionRoutes);
 app.use('/api/v1/assets', assetRoutes);
 app.use('/api/v1/requests', requestRoutes);
 app.use('/api/v1/signatures', signatureRoutes);

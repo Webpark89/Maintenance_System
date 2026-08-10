@@ -23,7 +23,14 @@ export async function login(req: Request, res: Response) {
         ]
       },
       include: {
-        departments: true
+        departments: true,
+        roles: {
+          include: {
+            role_permissions: {
+              include: { permissions: true }
+            }
+          }
+        }
       }
     });
 
@@ -49,11 +56,17 @@ export async function login(req: Request, res: Response) {
       });
     }
 
+    const permissions = user.roles?.role_permissions.map((rp) => rp.permissions.code) || [];
+    const roleCode = user.roles?.code || user.role;
+
     const tokenPayload = {
       userId: user.id,
       empId: user.emp_id,
       name: user.name,
-      role: user.role as 'requester' | 'technician' | 'supervisor',
+      role: roleCode,
+      roleId: user.role_id,
+      roleCode: roleCode,
+      permissions,
       departmentId: user.department_id,
     };
 
@@ -75,7 +88,10 @@ export async function login(req: Request, res: Response) {
         user: {
           emp_id: user.emp_id,
           name: user.name,
-          role: user.role,
+          role: roleCode,
+          role_id: user.role_id,
+          role_name: user.roles?.name || (user.role === 'supervisor' ? 'หัวหน้าช่าง' : user.role === 'technician' ? 'ช่างซ่อม' : 'ผู้แจ้งซ่อม'),
+          permissions,
           department: user.departments?.dept_name || 'ทั่วไป',
           skills: user.skills || [],
         }
@@ -95,19 +111,34 @@ export async function getCurrentUser(req: AuthenticatedRequest, res: Response) {
 
     const user = await prisma.users.findUnique({
       where: { id: req.user.userId },
-      include: { departments: true }
+      include: {
+        departments: true,
+        roles: {
+          include: {
+            role_permissions: {
+              include: { permissions: true }
+            }
+          }
+        }
+      }
     });
 
     if (!user) {
       return res.status(404).json({ success: false, message: 'User not found' });
     }
 
+    const permissions = user.roles?.role_permissions.map((rp) => rp.permissions.code) || req.user.permissions || [];
+    const roleCode = user.roles?.code || user.role;
+
     return res.json({
       success: true,
       data: {
         emp_id: user.emp_id,
         name: user.name,
-        role: user.role,
+        role: roleCode,
+        role_id: user.role_id,
+        role_name: user.roles?.name || (user.role === 'supervisor' ? 'หัวหน้าช่าง' : user.role === 'technician' ? 'ช่างซ่อม' : 'ผู้แจ้งซ่อม'),
+        permissions,
         department: user.departments?.dept_name || 'ทั่วไป',
         skills: user.skills || [],
       }

@@ -20,6 +20,8 @@ import {
   LogOut,
   ArrowLeft,
   Menu,
+  ShieldCheck,
+  Users,
 } from "lucide-react";
 import { useRequests } from "@/lib/requestStore";
 import { getUserDefaultRoute } from "@/lib/auth";
@@ -77,6 +79,8 @@ export function Navbar({ title, subtitle, backUrl, actions }: NavbarProps) {
     { to: "/board", label: "บอร์ดงานซ่อม", icon: Wrench, roles: ["technician", "supervisor"] },
     { to: "/request", label: "แจ้งซ่อมใหม่", icon: ClipboardList, roles: ["requester", "technician", "supervisor"] },
     { to: "/assets", label: "ทรัพย์สิน & QR", icon: Building, roles: ["technician", "supervisor"] },
+    { to: "/users", label: "ผู้ใช้งาน", icon: Users, roles: ["supervisor"] },
+    { to: "/roles", label: "บทบาท & สิทธิ์", icon: ShieldCheck, roles: ["supervisor"] },
   ];
 
   const navItems = useMemo(

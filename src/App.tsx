@@ -14,6 +14,7 @@ import NotificationCenter from "./pages/NotificationCenter.tsx";
 import AssetManagement from "./pages/AssetManagement.tsx";
 import Dashboard from "./pages/Dashboard.tsx";
 import UserManagement from "./pages/UserManagement.tsx";
+import RoleManagement from "./pages/RoleManagement.tsx";
 import NotFound from "./pages/NotFound.tsx";
 
 const queryClient = new QueryClient();
@@ -42,6 +43,15 @@ const App = () => (
             element={
               <ProtectedRoute allowedRoles={["supervisor"]}>
                 <UserManagement />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/roles"
+            element={
+              <ProtectedRoute allowedRoles={["supervisor"]}>
+                <RoleManagement />
               </ProtectedRoute>
             }
           />

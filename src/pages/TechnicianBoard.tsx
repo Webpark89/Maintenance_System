@@ -198,21 +198,27 @@ export default function TechnicianBoard() {
   }, [filtered, currentTech]);
 
   const handleAccept = (id: string) => {
+    if (!isSupervisor) {
+      toast.error("ปฏิเสธการทำรายการ: ต้องให้ Supervisor เป็นผู้กดเลือกมอบหมายช่างผู้รับผิดชอบงานเท่านั้น", {
+        description: "ช่างซ่อมไม่สามารถกดรับงานเองได้ตามกฎ Standard Workflow",
+      });
+      return;
+    }
     requestStore.setStatus(id, "assess", currentTech, {
-      actorName: TECHNICIAN_NAME,
-      note: "ช่างรับงานและเริ่มประเมิน",
+      actorName: technicianName,
+      note: "Supervisor มอบหมายและเริ่มประเมินงาน",
       notifyRequester: true,
       subStatus: SUB_STATUS_BY_STATUS.assess,
     });
-    toast.success("รับงานสำเร็จ");
+    toast.success("มอบหมายงานสำเร็จ");
     setTimeout(() => navigate(`/assessment/${id}`), 350);
   };
 
   const handleChangeStatus = async (id: string, status: Status, actionLabel: string) => {
     const reqItem = requests.find((r) => r.request_id === id);
     if (reqItem && !canManageRequest(currentUser, reqItem)) {
-      toast.error("ปฏิเสธการทำรายการ: คุณไม่มีสิทธิ์จัดการงานซ่อมของช่างคนอื่น", {
-        description: "ช่างซ่อมสามารถจัดการได้เฉพาะงานที่ได้รับมอบหมายให้ตนเองเท่านั้น",
+      toast.error("ปฏิเสธการทำรายการ: ต้องให้ Supervisor กดเลือกมอบหมายช่างผู้รับผิดชอบก่อนเท่านั้น", {
+        description: "ช่างซ่อมไม่สามารถเลื่อนการ์ดงานที่ยังไม่ได้มอบหมาย หรือการ์ดของช่างคนอื่นได้",
       });
       return;
     }
@@ -328,8 +334,8 @@ export default function TechnicianBoard() {
       return;
     }
     if (!canManageRequest(currentUser, request)) {
-      toast.error("ปฏิเสธการย้ายการ์ด: คุณไม่มีสิทธิ์จัดการงานซ่อมของช่างคนอื่น", {
-        description: "ช่างซ่อมสามารถลากย้ายได้เฉพาะงานที่ได้รับมอบหมายให้ตนเองเท่านั้น",
+      toast.error("ปฏิเสธการย้ายการ์ด: ต้องให้ Supervisor กดเลือกมอบหมายช่างผู้รับผิดชอบก่อนเท่านั้น", {
+        description: "ช่างซ่อมไม่สามารถเลื่อนการ์ดงานที่ยังไม่ได้มอบหมาย หรือการ์ดของช่างคนอื่นได้",
       });
       setDraggedId(null);
       return;
