@@ -10,7 +10,7 @@ import { calculateRepairDuration } from "@/lib/holidayUtils";
 import { getCurrentUser } from "@/lib/auth";
 import { api } from "@/lib/api";
 import { FileCheck2, PenTool, CheckCircle, ShieldCheck, UserCheck, RefreshCw, Sparkles, Clock3, AlertTriangle, Loader2 } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/components/ui/sonner";
 
 interface Props {
   request: WorkRequest;

@@ -12,8 +12,8 @@ import { Badge } from "@/components/ui/badge";
 import { MOCK_SPARE_PARTS, WorkRequest } from "@/lib/mockData";
 import { requestStore } from "@/lib/requestStore";
 import { getCurrentUser } from "@/lib/auth";
-import { PackageCheck, PackagePlus, History, Link, Unlink, DollarSign, CheckCircle2, AlertCircle, ShoppingCart, Lock, ShieldCheck } from "lucide-react";
-import { toast } from "sonner";
+import { PackagePlus, History, Link, Unlink, CheckCircle2, ShoppingCart, Lock, ShieldCheck } from "lucide-react";
+import { toast } from "@/components/ui/sonner";
 
 interface Props {
   request: WorkRequest;
@@ -26,12 +26,13 @@ export function StockRequisitionDialog({ request, open, onOpenChange }: Props) {
   const isSupervisor = user?.role === "supervisor";
   const isCompleted = request.status === "complete";
 
-  const stock = request.stock_requisition ?? {
-    is_system_connected: false,
-    parts_ready: false,
-    total_price: 0,
-    requisitions: [],
-    logs: [],
+  const rawStock = request.stock_requisition;
+  const stock = {
+    is_system_connected: rawStock?.is_system_connected ?? false,
+    parts_ready: rawStock?.parts_ready ?? false,
+    total_price: rawStock?.total_price ?? 0,
+    requisitions: rawStock?.requisitions || [],
+    logs: rawStock?.logs || [],
   };
 
   const isHighCost = stock.total_price >= 10000;

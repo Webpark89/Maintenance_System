@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Wrench, ShieldCheck, Loader2, Fingerprint, Lock, User, LogIn, CheckCircle2, CloudRain } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/components/ui/sonner";
 import { api } from "@/lib/api";
 import { connectSocket } from "@/lib/socket";
 
@@ -30,6 +30,29 @@ const Login = () => {
     }
 
     setLoading(true);
+
+    const upperUser = username.trim().toUpperCase();
+
+    // Check if password was changed/reset locally
+    let localPassword: string | null = null;
+    try {
+      const rawPasswords = localStorage.getItem("fixflow_user_passwords");
+      if (rawPasswords) {
+        const store = JSON.parse(rawPasswords);
+        if (store[upperUser]) {
+          localPassword = store[upperUser];
+        }
+      }
+    } catch {
+      // Ignore store parse errors
+    }
+
+    if (localPassword && password.trim() !== localPassword) {
+      toast.error("รหัสพนักงานหรือรหัสผ่านไม่ถูกต้อง");
+      setLoading(false);
+      return;
+    }
+
     try {
       // Call Backend API Endpoint POST /api/v1/auth/login
       const res = await api.post("/auth/login", {
@@ -81,6 +104,26 @@ const Login = () => {
 
       // Fallback mode when backend server is temporarily unreachable or starting up
       const upperUser = username.trim().toUpperCase();
+
+      // Check updated password store
+      let expectedPassword = "demo1234";
+      try {
+        const rawPasswords = localStorage.getItem("fixflow_user_passwords");
+        if (rawPasswords) {
+          const store = JSON.parse(rawPasswords);
+          if (store[upperUser]) {
+            expectedPassword = store[upperUser];
+          }
+        }
+      } catch {
+        // Ignore store parse errors
+      }
+
+      if (password.trim() !== expectedPassword) {
+        toast.error("รหัสพนักงานหรือรหัสผ่านไม่ถูกต้อง");
+        return;
+      }
+
       let detectedRole: Role = "technician";
       let name = "บอส";
       let department = "แผนกซ่อมบำรุงโรงงาน";

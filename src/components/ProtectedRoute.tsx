@@ -1,7 +1,7 @@
 import React from "react";
 import { Navigate } from "react-router-dom";
 import { getCurrentUser, getUserDefaultRoute, UserRole } from "@/lib/auth";
-import { toast } from "sonner";
+import { toast } from "@/components/ui/sonner";
 
 interface ProtectedRouteProps {
   children: React.ReactNode;

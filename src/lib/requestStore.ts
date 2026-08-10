@@ -148,6 +148,39 @@ export async function assignTechnicianApi(id: string, technicianId: number) {
   return res.data;
 }
 
+const LOCAL_STORAGE_KEY = 'fixflow_requests_store';
+
+function loadSavedRequests(): WorkRequest[] {
+  try {
+    const saved = localStorage.getItem(LOCAL_STORAGE_KEY);
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return parsed;
+      }
+    }
+  } catch (e) {
+    console.warn('Failed to parse saved requests from localStorage:', e);
+  }
+  return MOCK_REQUESTS_WITH_TIMELINE;
+}
+
+function saveRequestsToStorage(requests: WorkRequest[]) {
+  try {
+    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(requests));
+  } catch (e) {
+    console.warn('Failed to save requests to localStorage:', e);
+  }
+}
+
+let globalRequests = loadSavedRequests();
+const listeners = new Set<() => void>();
+
+function notifyListeners() {
+  saveRequestsToStorage(globalRequests);
+  listeners.forEach((l) => l());
+}
+
 // Backward Compatibility requestStore Object for Components
 export const requestStore = {
   add: (data: any) => {
@@ -157,25 +190,73 @@ export const requestStore = {
       priority: data.priority || 'medium',
       problem_title: data.issue_summary || 'แจ้งซ่อม',
       description: data.issue_summary,
-    });
+    }).catch(() => {});
     return { request_id: 'WO-NEW' };
   },
   setStatus: (id: string, status: Status, techId?: string, opts?: any) => {
-    updateRequestStatusApi(id, status as WorkOrderStatus);
+    const subStatus = SUB_STATUS_BY_STATUS[status] || "reported";
+    globalRequests = globalRequests.map((r) =>
+      r.request_id === id ? { ...r, status, sub_status: subStatus } : r
+    );
+    notifyListeners();
+    updateRequestStatusApi(id, status as WorkOrderStatus).catch(() => {});
   },
-  requestCancellation: (id: string) => {
-    updateRequestStatusApi(id, 'cancelled' as WorkOrderStatus);
+  requestCancellation: (id: string, reason?: string, requestedBy?: string, empId?: string) => {
+    globalRequests = globalRequests.map((r) =>
+      r.request_id === id ? { ...r, status: 'complete' as Status, sub_status: 'finished' as SubStatus } : r
+    );
+    notifyListeners();
+    updateRequestStatusApi(id, 'cancelled' as WorkOrderStatus).catch(() => {});
   },
-  approveCancellation: (id: string) => {
-    updateRequestStatusApi(id, 'cancelled' as WorkOrderStatus);
+  approveCancellation: (id: string, approvedBy?: string, approved?: boolean, rejectReason?: string) => {
+    if (approved) {
+      globalRequests = globalRequests.filter((r) => r.request_id !== id);
+    }
+    notifyListeners();
+    updateRequestStatusApi(id, 'cancelled' as WorkOrderStatus).catch(() => {});
   },
   deleteRequestBySupervisor: (id: string) => {
-    updateRequestStatusApi(id, 'cancelled' as WorkOrderStatus);
+    globalRequests = globalRequests.filter((r) => r.request_id !== id);
+    notifyListeners();
+    updateRequestStatusApi(id, 'cancelled' as WorkOrderStatus).catch(() => {});
   },
-  assignTechnician: (id: string, techId: string) => {
-    assignTechnicianApi(id, 1);
+  assignTechnician: (id: string, techId: string, assignedBy?: string) => {
+    const tech = TECHNICIANS_LIST.find((t) => t.emp_id === techId);
+    const techName = tech ? tech.name : techId;
+
+    globalRequests = globalRequests.map((r) => {
+      if (r.request_id === id) {
+        return {
+          ...r,
+          assigned_to: techId,
+          assigned_technician_name: techName,
+        };
+      }
+      return r;
+    });
+    notifyListeners();
+
+    const techNumericId = techId === "TECH002" ? 2 : 1;
+    assignTechnicianApi(id, techNumericId).catch(() => {});
   },
-  approveRequisition: (id: string) => {},
+  approveRequisition: (id: string, approvedBy?: string, approved?: boolean) => {
+    notifyListeners();
+  },
+  addRequisitionItem: (id: string, item: any, actorName?: string) => {
+    notifyListeners();
+  },
+  update: (id: string, partialData: any) => {
+    globalRequests = globalRequests.map((r) =>
+      r.request_id === id ? { ...r, ...partialData } : r
+    );
+    notifyListeners();
+  },
+  togglePartsReady: (id: string, ready: boolean, actorName?: string) => {
+    notifyListeners();
+  },
+  toggleSystemConnected: (id: string, connected: boolean, systemName?: string) => {
+    notifyListeners();
+  },
   saveAssessmentReport: () => {},
   addDualSignature: () => {},
 };
@@ -184,17 +265,41 @@ export const requestStore = {
 import { useState, useEffect } from 'react';
 
 export function useRequests() {
-  const [requests, setRequests] = useState<WorkRequest[]>(MOCK_REQUESTS_WITH_TIMELINE);
+  const [requests, setRequests] = useState<WorkRequest[]>(globalRequests);
 
   useEffect(() => {
     let isMounted = true;
+    const handleChange = () => {
+      if (isMounted) setRequests([...globalRequests]);
+    };
+    listeners.add(handleChange);
+
     fetchRequestsFromApi().then((data) => {
       if (isMounted && data.length > 0) {
-        setRequests(data);
+        const saved = loadSavedRequests();
+        const savedMap = new Map(saved.map((r) => [r.request_id, r]));
+
+        const merged = data.map((item) => {
+          const localItem = savedMap.get(item.request_id);
+          if (localItem && localItem.assigned_to) {
+            return {
+              ...item,
+              assigned_to: localItem.assigned_to,
+              assigned_technician_name: localItem.assigned_technician_name || item.assigned_technician_name,
+            };
+          }
+          return item;
+        });
+
+        globalRequests = merged;
+        saveRequestsToStorage(globalRequests);
+        setRequests([...globalRequests]);
       }
     });
+
     return () => {
       isMounted = false;
+      listeners.delete(handleChange);
     };
   }, []);
 
@@ -236,4 +341,5 @@ export function useRequest(id?: string) {
   const requests = useRequests();
   return requests.find((r) => r.request_id === id);
 }
+
 

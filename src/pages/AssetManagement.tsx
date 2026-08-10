@@ -40,7 +40,7 @@ import {
   Wrench,
   Zap,
 } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/components/ui/sonner";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { AppLayout } from "@/components/AppLayout";
 import { getCurrentUser } from "@/lib/auth";

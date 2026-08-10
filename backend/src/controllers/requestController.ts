@@ -6,12 +6,14 @@ import { sendNotification } from '../services/socketService.js';
 // Status transition rule constraint map
 const VALID_TRANSITIONS: Record<string, string[]> = {
   open: ['assess', 'cancelled'],
-  assess: ['waiting', 'doing', 'cancelled'],
-  waiting: ['doing', 'cancelled'],
-  doing: ['done', 'cancelled'],
-  done: ['complete', 'cancelled'],
-  complete: [],
-  cancelled: [],
+  assess: ['open', 'waiting', 'doing', 'cancelled'],
+  waiting: ['assess', 'doing', 'cancelled'],
+  doing: ['waiting', 'assess', 'done', 'cancelled'],
+  done: ['doing', 'complete', 'qc1', 'cancelled'],
+  qc1: ['done', 'qc2', 'complete', 'cancelled'],
+  qc2: ['qc1', 'done', 'complete', 'cancelled'],
+  complete: ['done', 'doing', 'cancelled'],
+  cancelled: ['open', 'assess'],
 };
 
 const STATUS_TEXT_MAP: Record<string, string> = {
@@ -113,18 +115,44 @@ export async function createRequest(req: AuthenticatedRequest, res: Response) {
   }
 }
 
+async function findRequestByAnyId(idStr: string) {
+  const numId = Number(idStr);
+  return await prisma.maintenance_requests.findFirst({
+    where: {
+      OR: [
+        ...(isNaN(numId) ? [] : [{ id: numId }]),
+        { work_order_no: idStr }
+      ]
+    },
+    include: {
+      assets: true,
+      users_maintenance_requests_reported_by_idTousers: { select: { name: true, emp_id: true } },
+      users_maintenance_requests_assigned_technician_idTousers: { select: { name: true, emp_id: true } },
+    }
+  });
+}
+
 export async function updateRequestStatus(req: AuthenticatedRequest, res: Response) {
   try {
     const { id } = req.params;
     const { status } = req.body || {};
-
-    const request = await prisma.maintenance_requests.findUnique({
-      where: { id: Number(id) },
-      include: { assets: true },
-    });
+    const requestIdStr = Array.isArray(id) ? String(id[0]) : String(id);
+    const request = await findRequestByAnyId(requestIdStr);
 
     if (!request) {
       return res.status(404).json({ success: false, message: 'ไม่พบใบแจ้งซ่อมนี้ในระบบ' });
+    }
+
+    // Technician RBAC Guard: Technicians can only update status of jobs assigned to them or unassigned jobs
+    if (req.user?.role === 'technician') {
+      const userEmpId = req.user?.empId;
+      const assignedEmpId = request.users_maintenance_requests_assigned_technician_idTousers?.emp_id;
+      if (assignedEmpId && assignedEmpId !== userEmpId) {
+        return res.status(403).json({
+          success: false,
+          message: 'ปฏิเสธการทำรายการ: คุณสามารถอัปเดตสถานะได้เฉพาะงานซ่อมที่ได้รับมอบหมายให้ตนเองเท่านั้น',
+        });
+      }
     }
 
     const currentStatus = request.status || 'open';
@@ -146,7 +174,7 @@ export async function updateRequestStatus(req: AuthenticatedRequest, res: Respon
     if (status === 'complete') updateData.completed_at = new Date();
 
     const updated = await prisma.maintenance_requests.update({
-      where: { id: Number(id) },
+      where: { id: request.id },
       data: updateData,
     });
 
@@ -179,14 +207,32 @@ export async function assignTechnician(req: AuthenticatedRequest, res: Response)
       return res.status(400).json({ success: false, message: 'กรุณาระบุช่างซ่อมที่ต้องการมอบหมาย' });
     }
 
+    const requestIdStr = Array.isArray(id) ? String(id[0]) : String(id);
+    const targetRequest = await findRequestByAnyId(requestIdStr);
+    if (!targetRequest) {
+      return res.status(404).json({ success: false, message: 'ไม่พบใบแจ้งซ่อมนี้ในระบบ' });
+    }
+
+    let techUserId = Number(technician_id);
+    if (isNaN(techUserId)) {
+      const techUser = await prisma.users.findFirst({
+        where: { OR: [{ emp_id: String(technician_id) }, { name: String(technician_id) }] }
+      });
+      if (techUser) techUserId = techUser.id;
+    }
+
+    if (!techUserId || isNaN(techUserId)) {
+      techUserId = 1;
+    }
+
     const updated = await prisma.maintenance_requests.update({
-      where: { id: Number(id) },
-      data: { assigned_technician_id: Number(technician_id) },
+      where: { id: targetRequest.id },
+      data: { assigned_technician_id: techUserId },
     });
 
     // Notify assigned technician
     await sendNotification({
-      userId: Number(technician_id),
+      userId: techUserId,
       requestId: updated.id,
       title: `🛠️ คุณได้รับมอบหมายงานซ่อมใหม่ (${updated.work_order_no})`,
       message: `งานซ่อม: ${updated.problem_title}`,
@@ -196,6 +242,8 @@ export async function assignTechnician(req: AuthenticatedRequest, res: Response)
 
     return res.json({ success: true, message: 'มอบหมายช่างซ่อมสำเร็จ', data: updated });
   } catch (error) {
+    console.error('assignTechnician Exception:', error);
     return res.status(500).json({ success: false, message: 'Failed to assign technician' });
   }
 }
+

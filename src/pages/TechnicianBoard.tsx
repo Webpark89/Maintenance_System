@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Bell, FileSpreadsheet, Filter, LayoutDashboard, LayoutGrid, List, LogOut, Menu, QrCode, Search, Wrench } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/components/ui/sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -29,6 +29,7 @@ import {
 import { cn } from "@/lib/utils";
 
 import { getCurrentUser } from "@/lib/auth";
+import { canManageRequest } from "@/lib/rbac";
 
 const STATUS_COLUMNS: { key: Status; title: string; accent: string }[] = [
   { key: "open", title: "เปิดงาน", accent: "border-status-new" },
@@ -208,9 +209,20 @@ export default function TechnicianBoard() {
   };
 
   const handleChangeStatus = async (id: string, status: Status, actionLabel: string) => {
+    const reqItem = requests.find((r) => r.request_id === id);
+    if (reqItem && !canManageRequest(currentUser, reqItem)) {
+      toast.error("ปฏิเสธการทำรายการ: คุณไม่มีสิทธิ์จัดการงานซ่อมของช่างคนอื่น", {
+        description: "ช่างซ่อมสามารถจัดการได้เฉพาะงานที่ได้รับมอบหมายให้ตนเองเท่านั้น",
+      });
+      return;
+    }
+
     try {
-      await updateRequestStatusApi(id, status);
-      toast.success(`อัปเดตสถานะเป็น ${actionLabel} ลง PostgreSQL สำเร็จ`);
+      requestStore.setStatus(id, status, currentTech, {
+        actorName: technicianName,
+        subStatus: SUB_STATUS_BY_STATUS[status],
+      });
+      toast.success(`อัปเดตสถานะเป็น ${actionLabel} เรียบร้อยแล้ว`);
     } catch (err: any) {
       toast.error(err.message || "อัปเดตสถานะล้มเหลว");
     }
@@ -312,6 +324,13 @@ export default function TechnicianBoard() {
     if (!draggedId) return;
     const request = filtered.find((item) => item.request_id === draggedId);
     if (!request || request.status === status) {
+      setDraggedId(null);
+      return;
+    }
+    if (!canManageRequest(currentUser, request)) {
+      toast.error("ปฏิเสธการย้ายการ์ด: คุณไม่มีสิทธิ์จัดการงานซ่อมของช่างคนอื่น", {
+        description: "ช่างซ่อมสามารถลากย้ายได้เฉพาะงานที่ได้รับมอบหมายให้ตนเองเท่านั้น",
+      });
       setDraggedId(null);
       return;
     }
@@ -625,7 +644,7 @@ export default function TechnicianBoard() {
                             }}
                             showAccept={column.key === "open"}
                             showQuickActions={column.key !== "open" && column.key !== "complete"}
-                            draggable
+                            draggable={canManageRequest(currentUser, request)}
                             onDragStart={() => handleDragStart(request.request_id)}
                             onDragEnd={handleDragEnd}
                           />

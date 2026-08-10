@@ -3,18 +3,18 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { PriorityBadge } from "./PriorityBadge";
 import { StatusBadge } from "./StatusBadge";
-import { CATEGORY_LABEL, Status, timeAgo, WorkRequest, getTechnicianName, getTechnicianDepartment, TECHNICIANS_LIST } from "@/lib/mockData";
+import { CATEGORY_LABEL, Status, timeAgo, WorkRequest, getTechnicianName, getTechnicianDepartment } from "@/lib/mockData";
 import { Clock, MapPin, User, Zap, Wrench, Building2, Droplets, Cpu, Paperclip, Gauge, Waves, CircleHelp, ShoppingCart, FileCheck2, CalendarCheck2, ChevronDown, ChevronUp, Eye, Printer, Lock, AlertTriangle, UserCheck, Trash2, CheckCircle2, XCircle, Ban } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getCurrentUser } from "@/lib/auth";
 import { requestStore, useTechnicians } from "@/lib/requestStore";
-import { toast } from "sonner";
+import { toast } from "@/components/ui/sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 
-const CATEGORY_ICON = {
+const CATEGORY_ICON: Record<string, React.ElementType> = {
   "electrical-control": Zap,
   electrical: Zap,
   mechanical: Wrench,
@@ -24,6 +24,7 @@ const CATEGORY_ICON = {
   facility: Building2,
   plumbing: Droplets,
   it: Cpu,
+  "utility-it": Cpu,
 };
 
 interface Props {
@@ -62,7 +63,7 @@ export function JobCard({
   const isSupervisor = user?.role === "supervisor";
   const isCompleted = request.status === "complete";
 
-  const Icon = CATEGORY_ICON[request.category];
+  const Icon = CATEGORY_ICON[request.category] || CircleHelp;
   const isCritical = request.priority === "critical";
   const [isExpanded, setIsExpanded] = useState(false);
 
@@ -73,8 +74,9 @@ export function JobCard({
   const [isRejectDialogOpen, setIsRejectDialogOpen] = useState(false);
 
   const details = request.request_details;
-  const thumbnail = request.attachments.find((attachment) =>
-    attachment.mime_type ? attachment.mime_type.startsWith("image/") : attachment.url.startsWith("data:image"),
+  const attachments = request.attachments || [];
+  const thumbnail = attachments.find((attachment) =>
+    attachment.mime_type ? attachment.mime_type.startsWith("image/") : attachment.url?.startsWith("data:image"),
   )?.url;
 
   const symptomLabel =
@@ -258,10 +260,10 @@ export function JobCard({
             <p className={`text-foreground/90 leading-snug ${isExpanded ? "line-clamp-none" : "line-clamp-2"}`}>
               {request.issue_summary}
             </p>
-            {request.attachments.length > 0 && (
+            {attachments.length > 0 && (
               <div className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
                 <Paperclip className="h-3 w-3" />
-                แนบไฟล์ {request.attachments.length}
+                แนบไฟล์ {attachments.length}
               </div>
             )}
 

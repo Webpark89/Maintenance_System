@@ -36,9 +36,10 @@ import {
   Wrench,
   ShieldAlert,
 } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/components/ui/sonner";
 import { api } from "@/lib/api";
 import { AppLayout } from "@/components/AppLayout";
+import { getCurrentUser } from "@/lib/auth";
 
 export interface SystemUser {
   id: number;
@@ -174,6 +175,18 @@ const UserManagement = () => {
       .filter(Boolean);
     const cleanEmpId = addEmpId.trim().toUpperCase();
 
+    // Helper to store user passwords in localStorage for fallback/offline validation
+    const saveLocalPassword = (empId: string, pass: string) => {
+      try {
+        const raw = localStorage.getItem("fixflow_user_passwords");
+        const store = raw ? JSON.parse(raw) : {};
+        store[empId.trim().toUpperCase()] = pass.trim();
+        localStorage.setItem("fixflow_user_passwords", JSON.stringify(store));
+      } catch {
+        // Ignore storage errors
+      }
+    };
+
     try {
       const res = await api.post("/users", {
         emp_id: cleanEmpId,
@@ -184,6 +197,7 @@ const UserManagement = () => {
         skills: skillsArray,
       });
 
+      saveLocalPassword(cleanEmpId, addPassword.trim());
       toast.success(res.data?.message || `เพิ่มพนักงานใหม่ ${addName} สำเร็จ`);
       setIsAddOpen(false);
       resetAddForm();
@@ -201,6 +215,7 @@ const UserManagement = () => {
         is_active: true,
       };
       setUsers((prev) => [...prev, newLocalUser]);
+      saveLocalPassword(cleanEmpId, addPassword.trim());
       toast.success(`เพิ่มพนักงานใหม่ ${addName} สำเร็จ (Offline Mode)`);
       setIsAddOpen(false);
       resetAddForm();
@@ -218,6 +233,8 @@ const UserManagement = () => {
     setAddSkills("");
   };
 
+  const currentUser = getCurrentUser();
+
   // Open Edit Modal
   const handleOpenEdit = (user: SystemUser) => {
     setSelectedUser(user);
@@ -232,6 +249,14 @@ const UserManagement = () => {
   const handleSaveEdit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedUser) return;
+
+    // Protection Guard: Self Role Change Prevention
+    if (selectedUser.emp_id === currentUser?.emp_id && editRole !== currentUser?.role) {
+      toast.error("ไม่อนุญาตให้ปรับเปลี่ยนบทบาทของตนเอง", {
+        description: "ระบบป้องกัน Supervisor จากการปรับลดสิทธิ์ตนเองเพื่อความปลอดภัยในการบริหารระบบ",
+      });
+      return;
+    }
 
     setSubmitting(true);
     const skillsArray = editSkills
@@ -307,16 +332,29 @@ const UserManagement = () => {
     e.preventDefault();
     if (!selectedUser || !newPassword.trim()) return;
 
+    const saveLocalPassword = (empId: string, pass: string) => {
+      try {
+        const raw = localStorage.getItem("fixflow_user_passwords");
+        const store = raw ? JSON.parse(raw) : {};
+        store[empId.trim().toUpperCase()] = pass.trim();
+        localStorage.setItem("fixflow_user_passwords", JSON.stringify(store));
+      } catch {
+        // Ignore storage errors
+      }
+    };
+
     setSubmitting(true);
     try {
       const res = await api.post(`/users/${selectedUser.id}/reset-password`, {
         new_password: newPassword.trim(),
       });
 
+      saveLocalPassword(selectedUser.emp_id, newPassword.trim());
       toast.success(res.data?.message || `ตั้งรหัสผ่านใหม่สำหรับ ${selectedUser.name} เรียบร้อยแล้ว`);
       setIsResetOpen(false);
       setNewPassword("");
     } catch (err: any) {
+      saveLocalPassword(selectedUser.emp_id, newPassword.trim());
       toast.success(`ตั้งรหัสผ่านใหม่สำหรับ ${selectedUser.name} เรียบร้อยแล้ว (Offline Mode)`);
       setIsResetOpen(false);
       setNewPassword("");
@@ -638,8 +676,12 @@ const UserManagement = () => {
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
                 <Label className="text-xs font-semibold">ปรับเปลี่ยนบทบาท (Role)</Label>
-                <Select value={editRole} onValueChange={setEditRole}>
-                  <SelectTrigger className="h-9 text-xs">
+                <Select
+                  value={editRole}
+                  onValueChange={setEditRole}
+                  disabled={selectedUser?.emp_id === currentUser?.emp_id}
+                >
+                  <SelectTrigger className="h-9 text-xs disabled:opacity-75 disabled:cursor-not-allowed">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -648,6 +690,12 @@ const UserManagement = () => {
                     <SelectItem value="requester">📋 ผู้แจ้งซ่อม (Requester)</SelectItem>
                   </SelectContent>
                 </Select>
+                {selectedUser?.emp_id === currentUser?.emp_id && (
+                  <p className="text-[10px] text-amber-600 dark:text-amber-400 font-medium leading-tight flex items-start gap-1 mt-1">
+                    <ShieldAlert className="h-3 w-3 shrink-0 mt-0.5" />
+                    ไม่อนุญาตให้ปรับลด/เปลี่ยนบทบาทตนเอง เพื่อป้องกันการสูญเสียสิทธิ์บริหารจัดการ
+                  </p>
+                )}
               </div>
 
               <div className="space-y-1">

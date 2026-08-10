@@ -148,6 +148,14 @@ export async function updateUser(req: AuthenticatedRequest, res: Response) {
       return res.status(404).json({ success: false, message: 'ไม่พบผู้ใช้งานนี้ในระบบ' });
     }
 
+    // Protection Guard: Prevents user from demoting/changing their own role
+    if (req.user && req.user.userId === targetUser.id && role && role !== targetUser.role) {
+      return res.status(403).json({
+        success: false,
+        message: 'ไม่อนุญาตให้ปรับเปลี่ยนบทบาทบัญชีของตนเอง (เพื่อป้องกันการสูญเสียสิทธิ์บริหารจัดการระบบ)',
+      });
+    }
+
     const updatedUser = await prisma.users.update({
       where: { id: userId },
       data: {

@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { RecheckData, WorkRequest } from "@/lib/mockData";
 import { requestStore } from "@/lib/requestStore";
 import { CalendarCheck2, Clock, CheckCircle2, AlertTriangle, UserCheck, ShieldAlert, Sparkles } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/components/ui/sonner";
 import { cn } from "@/lib/utils";
 
 interface Props {

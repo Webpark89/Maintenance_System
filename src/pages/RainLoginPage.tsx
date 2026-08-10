@@ -16,7 +16,7 @@ import {
   CheckCircle2,
   ShieldCheck
 } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/components/ui/sonner";
 import { api } from "@/lib/api";
 import { connectSocket } from "@/lib/socket";
 import RainBackground from "@/components/RainBackground";
@@ -43,6 +43,29 @@ export const RainLoginPage: React.FC = () => {
     }
 
     setLoading(true);
+
+    const upperUser = username.trim().toUpperCase();
+
+    // Check if password was changed/reset locally
+    let localPassword: string | null = null;
+    try {
+      const rawPasswords = localStorage.getItem("fixflow_user_passwords");
+      if (rawPasswords) {
+        const store = JSON.parse(rawPasswords);
+        if (store[upperUser]) {
+          localPassword = store[upperUser];
+        }
+      }
+    } catch {
+      // Ignore store parse errors
+    }
+
+    if (localPassword && password.trim() !== localPassword) {
+      toast.error("รหัสพนักงานหรือรหัสผ่านไม่ถูกต้อง");
+      setLoading(false);
+      return;
+    }
+
     try {
       // API Attempt
       const res = await api.post("/auth/login", {
@@ -92,6 +115,27 @@ export const RainLoginPage: React.FC = () => {
 
       // Fallback mode for demo
       const upperUser = username.trim().toUpperCase();
+
+      // Check updated password store
+      let expectedPassword = "demo1234";
+      try {
+        const rawPasswords = localStorage.getItem("fixflow_user_passwords");
+        if (rawPasswords) {
+          const store = JSON.parse(rawPasswords);
+          if (store[upperUser]) {
+            expectedPassword = store[upperUser];
+          }
+        }
+      } catch {
+        // Ignore store parse errors
+      }
+
+      if (password.trim() !== expectedPassword) {
+        toast.error("รหัสพนักงานหรือรหัสผ่านไม่ถูกต้อง");
+        setLoading(false);
+        return;
+      }
+
       let detectedRole: Role = "technician";
       let name = "บอส";
       let department = "แผนกซ่อมบำรุงโรงงาน";

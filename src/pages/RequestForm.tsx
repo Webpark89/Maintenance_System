@@ -41,7 +41,7 @@ import {
   Zap,
 } from "lucide-react";
 import jsQR from "jsqr";
-import { toast } from "sonner";
+import { toast } from "@/components/ui/sonner";
 
 const CATEGORIES: { value: WorkRequest["category"]; label: string; icon: typeof Zap }[] = [
   { value: "electrical-control", label: "ไฟฟ้า / ระบบควบคุม", icon: Zap },
