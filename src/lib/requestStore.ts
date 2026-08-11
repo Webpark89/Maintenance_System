@@ -1,6 +1,6 @@
 import { api } from "./api";
 import { MaintenanceRequest, RequestCategory, WorkOrderStatus } from "@/types/maintenance";
-import { WorkRequest, Status, SubStatus, WorkCategory, MOCK_REQUESTS_WITH_TIMELINE, TechnicianUser, TECHNICIANS_LIST } from "@/lib/mockData";
+import { WorkRequest, Status, SubStatus, WorkCategory, MOCK_REQUESTS_WITH_TIMELINE, TechnicianUser, TECHNICIANS_LIST, getTechnicianName } from "@/lib/mockData";
 
 const SUB_STATUS_BY_STATUS: Record<Status, SubStatus> = {
   open: "reported",
