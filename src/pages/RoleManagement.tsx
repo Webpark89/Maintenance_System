@@ -70,10 +70,13 @@ export interface RoleItem {
 const MODULE_NAMES: Record<string, { label: string; icon: string; description: string }> = {
   work_order: { label: "งานซ่อมบำรุง (Work Order)", icon: "📋", description: "แจ้งซ่อม, มอบหมายงาน, บันทึกผลการซ่อม และยกเลิกงาน" },
   requisition: { label: "การเบิกอะไหล่ (Spare Parts)", icon: "📦", description: "เบิกอะไหล่ซ่อมบำรุง และอนุมัติการเบิก" },
+  inventory: { label: "คลังอะไหล่และการตัดสต็อก (Inventory)", icon: "🗄️", description: "ดูรายการอะไหล่, จัดการสต็อก, และปรับยอด" },
+  pm: { label: "แผนบำรุงรักษาเชิงป้องกัน (PM Schedule)", icon: "📅", description: "ดูแผนงาน PM, สร้างกำหนดการ และออกใบงานล่วงหน้า" },
   asset: { label: "ทะเบียนเครื่องจักร & QR Tag (Asset)", icon: "🏭", description: "จัดการทะเบียนเครื่องจักร, สร้าง QR Code และแก้ไขข้อมูล" },
   user: { label: "การจัดการผู้ใช้งาน (User Management)", icon: "👥", description: "จัดการพนักงาน, บัญชีผู้ใช้, และกำหนดแผนก" },
   role: { label: "บทบาทและสิทธิ์ (Roles & Permissions)", icon: "🛡️", description: "สร้าง/แก้ไขบทบาท และกำหนดสิทธิ์การใช้งานระบบ" },
   dashboard: { label: "รายงานและสถิติ (Dashboard)", icon: "📊", description: "เข้าถึง Dashboard KPI, MTTR และ MTBF" },
+  audit_log: { label: "บันทึกประวัติการทำงาน (Audit Logs)", icon: "📜", description: "ตรวจสอบประวัติกิจกรรมและการเข้าสู่ระบบย้อนหลัง" },
 };
 
 type ViewMode = "list" | "create" | "edit";

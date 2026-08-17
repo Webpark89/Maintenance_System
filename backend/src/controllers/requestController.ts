@@ -58,13 +58,71 @@ export async function getAllRequests(req: AuthenticatedRequest, res: Response) {
   }
 }
 
+const ALLOWED_PRIORITIES = ['low', 'medium', 'high', 'critical'] as const;
+
 export async function createRequest(req: AuthenticatedRequest, res: Response) {
   try {
     const { asset_id, priority, category, problem_title, description, image_url } = req.body || {};
     const userId = req.user?.userId;
 
     if (!asset_id || !problem_title || !category) {
-      return res.status(400).json({ success: false, message: 'กรุณากรอกข้อมูลปัญหา เครื่องจักร และหมวดหมู่ให้ครบถ้วน' });
+      return res.status(400).json({
+        success: false,
+        message: 'กรุณากรอกข้อมูลปัญหา เครื่องจักร และหมวดหมู่ให้ครบถ้วน',
+      });
+    }
+
+    const cleanProblemTitle = String(problem_title).trim();
+    if (cleanProblemTitle.length > 150) {
+      return res.status(400).json({
+        success: false,
+        message: 'หัวข้อปัญหา (problem_title) มีความยาวเกินกำหนด (สูงสุด 150 ตัวอักษร)',
+      });
+    }
+
+    const cleanCategory = String(category).trim();
+    if (cleanCategory.length > 50) {
+      return res.status(400).json({
+        success: false,
+        message: 'หมวดหมู่งานซ่อม (category) มีความยาวเกินกำหนด (สูงสุด 50 ตัวอักษร)',
+      });
+    }
+
+    const cleanDescription = description ? String(description).trim() : null;
+    if (cleanDescription && cleanDescription.length > 2000) {
+      return res.status(400).json({
+        success: false,
+        message: 'รายละเอียดปัญหา (description) มีความยาวเกินกำหนด (สูงสุด 2,000 ตัวอักษร)',
+      });
+    }
+
+    const numAssetId = Number(asset_id);
+    if (isNaN(numAssetId) || numAssetId <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'รหัสเครื่องจักร (asset_id) ต้องเป็นตัวเลขที่ถูกต้อง',
+      });
+    }
+
+    // Validate Priority Enum Allowlist
+    const cleanPriority = priority ? String(priority).trim().toLowerCase() : 'medium';
+    if (!ALLOWED_PRIORITIES.includes(cleanPriority as any)) {
+      return res.status(400).json({
+        success: false,
+        message: `ระดับความสำคัญ (Priority) ไม่ถูกต้อง ต้องเป็น: ${ALLOWED_PRIORITIES.join(', ')}`,
+      });
+    }
+
+    // Verify that target Asset exists before proceeding
+    const targetAsset = await prisma.assets.findUnique({
+      where: { id: numAssetId },
+    });
+
+    if (!targetAsset) {
+      return res.status(404).json({
+        success: false,
+        message: `ไม่พบเครื่องจักร/อุปกรณ์ที่ระบุในระบบ (asset_id: ${numAssetId})`,
+      });
     }
 
     // Safe Work Order Number Generator
@@ -77,13 +135,13 @@ export async function createRequest(req: AuthenticatedRequest, res: Response) {
     const newRequest = await prisma.maintenance_requests.create({
       data: {
         work_order_no: workOrderNo,
-        asset_id: Number(asset_id),
+        asset_id: numAssetId,
         reported_by_id: userId,
-        priority: priority || 'medium',
+        priority: cleanPriority as any,
         status: 'open',
-        category: String(category).trim(),
-        problem_title: String(problem_title).trim(),
-        description: description ? String(description).trim() : null,
+        category: cleanCategory,
+        problem_title: cleanProblemTitle,
+        description: cleanDescription,
         image_url: image_url ? String(image_url).trim() : null,
       },
       include: {
@@ -93,7 +151,7 @@ export async function createRequest(req: AuthenticatedRequest, res: Response) {
 
     // Update Asset status to breakdown
     await prisma.assets.update({
-      where: { id: Number(asset_id) },
+      where: { id: numAssetId },
       data: { status: 'breakdown' },
     });
 
@@ -102,16 +160,31 @@ export async function createRequest(req: AuthenticatedRequest, res: Response) {
       userId: null,
       requestId: newRequest.id,
       title: `🔔 มีใบแจ้งซ่อมใหม่ (${workOrderNo})`,
-      message: `ปัญหา: ${problem_title} (เครื่องจักร: ${newRequest.assets?.name || 'ไม่ระบุ'})`,
+      message: `ปัญหา: ${cleanProblemTitle} (เครื่องจักร: ${newRequest.assets?.name || 'ไม่ระบุ'})`,
       targetRoom: 'room:technicians',
       eventType: 'new_request',
       payloadData: newRequest,
     });
 
     return res.status(201).json({ success: true, message: 'สร้างใบแจ้งซ่อมสำเร็จ', data: newRequest });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Create request error:', error);
-    return res.status(500).json({ success: false, message: 'Failed to create request' });
+    if (error?.code === 'P2000') {
+      return res.status(400).json({
+        success: false,
+        message: 'ข้อมูลที่ระบุมีความยาวเกินขนาดคอลัมน์ในฐานข้อมูล (Value too long for column)',
+      });
+    }
+    if (error?.code === 'P2003' || error?.code === 'P2025') {
+      return res.status(404).json({
+        success: false,
+        message: 'ไม่พบข้อมูลเครื่องจักรหรือผู้ใช้งานที่อ้างอิงในระบบ',
+      });
+    }
+    return res.status(500).json({
+      success: false,
+      message: error?.message || 'เกิดข้อผิดพลาดในการสร้างใบแจ้งซ่อม',
+    });
   }
 }
 
@@ -132,11 +205,21 @@ async function findRequestByAnyId(idStr: string) {
   });
 }
 
+const ALLOWED_STATUSES = ['open', 'assess', 'waiting', 'doing', 'done', 'qc1', 'qc2', 'complete', 'cancelled'] as const;
+
 export async function updateRequestStatus(req: AuthenticatedRequest, res: Response) {
   try {
     const { id } = req.params;
     const { status } = req.body || {};
     const requestIdStr = Array.isArray(id) ? String(id[0]) : String(id);
+
+    if (!status || !ALLOWED_STATUSES.includes(status as any)) {
+      return res.status(400).json({
+        success: false,
+        message: `สถานะงานซ่อมไม่ถูกต้อง ต้องเป็นหนึ่งใน: ${ALLOWED_STATUSES.join(', ')}`,
+      });
+    }
+
     const request = await findRequestByAnyId(requestIdStr);
 
     if (!request) {
@@ -193,8 +276,9 @@ export async function updateRequestStatus(req: AuthenticatedRequest, res: Respon
     }
 
     return res.json({ success: true, message: `อัปเดตสถานะงานซ่อมเป็น ${status} สำเร็จ`, data: updated });
-  } catch (error) {
-    return res.status(500).json({ success: false, message: 'Failed to update request status' });
+  } catch (error: any) {
+    console.error('Update request status error:', error);
+    return res.status(500).json({ success: false, message: error?.message || 'เกิดข้อผิดพลาดในการอัปเดตสถานะงานซ่อม' });
   }
 }
 
@@ -213,16 +297,31 @@ export async function assignTechnician(req: AuthenticatedRequest, res: Response)
       return res.status(404).json({ success: false, message: 'ไม่พบใบแจ้งซ่อมนี้ในระบบ' });
     }
 
-    let techUserId = Number(technician_id);
-    if (isNaN(techUserId)) {
+    let techUserId: number | null = null;
+    const rawNum = Number(technician_id);
+    if (!isNaN(rawNum) && rawNum > 0) {
+      const foundById = await prisma.users.findUnique({ where: { id: rawNum } });
+      if (foundById) techUserId = foundById.id;
+    }
+
+    if (!techUserId) {
       const techUser = await prisma.users.findFirst({
-        where: { OR: [{ emp_id: String(technician_id) }, { name: String(technician_id) }] }
+        where: {
+          OR: [
+            { emp_id: String(technician_id).trim().toUpperCase() },
+            { emp_id: String(technician_id).trim() },
+            { name: String(technician_id).trim() }
+          ]
+        }
       });
       if (techUser) techUserId = techUser.id;
     }
 
-    if (!techUserId || isNaN(techUserId)) {
-      techUserId = 1;
+    if (!techUserId) {
+      return res.status(404).json({
+        success: false,
+        message: `ไม่พบข้อมูลช่างซ่อมที่ระบุในระบบ (technician: ${technician_id})`,
+      });
     }
 
     const updated = await prisma.maintenance_requests.update({
@@ -241,9 +340,12 @@ export async function assignTechnician(req: AuthenticatedRequest, res: Response)
     });
 
     return res.json({ success: true, message: 'มอบหมายช่างซ่อมสำเร็จ', data: updated });
-  } catch (error) {
+  } catch (error: any) {
     console.error('assignTechnician Exception:', error);
-    return res.status(500).json({ success: false, message: 'Failed to assign technician' });
+    if (error?.code === 'P2003' || error?.code === 'P2025') {
+      return res.status(404).json({ success: false, message: 'ไม่พบข้อมูลใบงานหรือช่างซ่อมในระบบ' });
+    }
+    return res.status(500).json({ success: false, message: error?.message || 'เกิดข้อผิดพลาดในการมอบหมายช่างซ่อม' });
   }
 }
 

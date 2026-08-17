@@ -61,17 +61,46 @@ export function isAuthenticated(): boolean {
   return getCurrentUser() !== null;
 }
 
-export function getUserDefaultRoute(role?: UserRole | null): string {
-  const currentRole = role ?? getUserRole();
-  switch (currentRole) {
-    case "requester":
-      return "/request";
-    case "technician":
-      return "/board";
+export function getUserDefaultRoute(userOrRole?: UserPayload | UserRole | null): string {
+  let user: UserPayload | null = null;
+  let role: UserRole | null = null;
+
+  if (typeof userOrRole === "object" && userOrRole !== null) {
+    user = userOrRole;
+    role = user.role;
+  } else if (typeof userOrRole === "string") {
+    role = userOrRole;
+    user = getCurrentUser();
+  } else {
+    user = getCurrentUser();
+    role = user ? user.role : null;
+  }
+
+  if (user) {
+    // Supervisor Master
+    if (user.role === "supervisor") return "/dashboard";
+
+    const perms = user.permissions || [];
+    if (perms.length > 0) {
+      if (perms.includes("dashboard:view")) return "/dashboard";
+      if (perms.includes("work_order:read") || perms.includes("work_order:assess")) return "/board";
+      if (perms.includes("work_order:create")) return "/request";
+      if (perms.includes("asset:read")) return "/assets";
+      if (perms.includes("user:read")) return "/users";
+      if (perms.includes("role:manage")) return "/roles";
+    }
+  }
+
+  // Fallback for legacy role string
+  switch (role) {
     case "supervisor":
       return "/dashboard";
+    case "technician":
+      return "/board";
+    case "requester":
+      return "/request";
     default:
-      return "/";
+      return "/request";
   }
 }
 

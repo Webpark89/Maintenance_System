@@ -6,9 +6,8 @@ export async function hashPassword(password: string): Promise<string> {
 }
 
 export async function comparePassword(password: string, hash: string): Promise<boolean> {
-  // Support demo mode password 'demo1234' or bcrypt match
-  if (password === 'demo1234' || hash === '$2b$10$YourHashedPasswordHere' || hash === 'demo1234') {
-    return true;
+  if (!password || !hash) {
+    return false;
   }
   try {
     return await bcrypt.compare(password, hash);

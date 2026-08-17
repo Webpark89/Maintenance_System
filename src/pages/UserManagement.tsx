@@ -47,6 +47,7 @@ import { toast } from "@/components/ui/sonner";
 import { api } from "@/lib/api";
 import { AppLayout } from "@/components/AppLayout";
 import { getCurrentUser } from "@/lib/auth";
+import { hasPermission } from "@/lib/rbac";
 
 export interface SystemUser {
   id: number;
@@ -68,6 +69,10 @@ export interface DepartmentItem {
 type ViewMode = "list" | "add" | "edit";
 
 const UserManagement = () => {
+  const currentUser = getCurrentUser();
+  const canManageUsers = hasPermission("user:manage", currentUser);
+  const canManageRoles = hasPermission("role:manage", currentUser);
+
   const [users, setUsers] = useState<SystemUser[]>([]);
   const [departments, setDepartments] = useState<DepartmentItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -99,27 +104,8 @@ const UserManagement = () => {
   const [newPassword, setNewPassword] = useState("");
   const [showAddPassword, setShowAddPassword] = useState(false);
   const [showResetPassword, setShowResetPassword] = useState(false);
-  const [visiblePasswords, setVisiblePasswords] = useState<Record<string, boolean>>({});
 
   const [rolesList, setRolesList] = useState<{ id: number; code: string; name: string }[]>([]);
-
-  const togglePasswordVisibility = (empId: string) => {
-    setVisiblePasswords((prev) => ({
-      ...prev,
-      [empId]: !prev[empId],
-    }));
-  };
-
-  const getUserPassword = (empId: string) => {
-    try {
-      const stored = localStorage.getItem("fixflow_user_passwords");
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        if (parsed[empId]) return parsed[empId];
-      }
-    } catch (e) {}
-    return "demo1234";
-  };
 
   const fetchUsersData = async () => {
     setLoading(true);
@@ -229,17 +215,6 @@ const UserManagement = () => {
     setSubmitting(true);
     const cleanEmpId = addEmpId.trim().toUpperCase();
 
-    const saveLocalPassword = (empId: string, pass: string) => {
-      try {
-        const raw = localStorage.getItem("fixflow_user_passwords");
-        const store = raw ? JSON.parse(raw) : {};
-        store[empId.trim().toUpperCase()] = pass.trim();
-        localStorage.setItem("fixflow_user_passwords", JSON.stringify(store));
-      } catch {
-        // Ignore storage errors
-      }
-    };
-
     try {
       const res = await api.post("/users", {
         emp_id: cleanEmpId,
@@ -249,7 +224,6 @@ const UserManagement = () => {
         department_id: addDeptId ? Number(addDeptId) : null,
       });
 
-      saveLocalPassword(cleanEmpId, addPassword.trim());
       toast.success(res.data?.message || `เพิ่มพนักงานใหม่ ${addName} สำเร็จ`);
       handleBackToList();
       fetchUsersData();
@@ -264,15 +238,12 @@ const UserManagement = () => {
         is_active: true,
       };
       setUsers((prev) => [...prev, newLocalUser]);
-      saveLocalPassword(cleanEmpId, addPassword.trim());
       toast.success(`เพิ่มพนักงานใหม่ ${addName} สำเร็จ (Offline Mode)`);
       handleBackToList();
     } finally {
       setSubmitting(false);
     }
   };
-
-  const currentUser = getCurrentUser();
 
   // Handle Edit User Submit (Full Page Form with Edit emp_id!)
   const handleSaveEditSubmit = async (e: React.FormEvent) => {
@@ -360,32 +331,18 @@ const UserManagement = () => {
     e.preventDefault();
     if (!selectedUser || !newPassword.trim()) return;
 
-    const saveLocalPassword = (empId: string, pass: string) => {
-      try {
-        const raw = localStorage.getItem("fixflow_user_passwords");
-        const store = raw ? JSON.parse(raw) : {};
-        store[empId.trim().toUpperCase()] = pass.trim();
-        localStorage.setItem("fixflow_user_passwords", JSON.stringify(store));
-      } catch {
-        // Ignore storage errors
-      }
-    };
-
     setSubmitting(true);
     try {
       const res = await api.post(`/users/${selectedUser.id}/reset-password`, {
         new_password: newPassword.trim(),
       });
 
-      saveLocalPassword(selectedUser.emp_id, newPassword.trim());
       toast.success(res.data?.message || `ตั้งรหัสผ่านใหม่สำหรับ ${selectedUser.name} เรียบร้อยแล้ว`);
       setIsResetOpen(false);
       setNewPassword("");
     } catch (err: any) {
-      saveLocalPassword(selectedUser.emp_id, newPassword.trim());
-      toast.success(`ตั้งรหัสผ่านใหม่สำหรับ ${selectedUser.name} เรียบร้อยแล้ว (Offline Mode)`);
-      setIsResetOpen(false);
-      setNewPassword("");
+      console.error("Reset password error:", err);
+      toast.error(err.message || `ไม่สามารถตั้งรหัสผ่านใหม่สำหรับ ${selectedUser.name} ได้`);
     } finally {
       setSubmitting(false);
     }
@@ -467,14 +424,18 @@ const UserManagement = () => {
             <Button variant="outline" size="sm" onClick={fetchUsersData} disabled={loading} className="gap-1.5 text-xs">
               <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} /> รีเฟรชข้อมูล
             </Button>
-            <a href="/roles">
-              <Button variant="secondary" size="sm" className="gap-1.5 text-xs font-semibold shadow-sm">
-                <ShieldCheck className="h-4 w-4 text-primary" /> จัดการบทบาท & สิทธิ์
+            {canManageRoles && (
+              <a href="/roles">
+                <Button variant="secondary" size="sm" className="gap-1.5 text-xs font-semibold shadow-sm">
+                  <ShieldCheck className="h-4 w-4 text-primary" /> จัดการบทบาท & สิทธิ์
+                </Button>
+              </a>
+            )}
+            {canManageUsers && (
+              <Button variant="industrial" size="sm" onClick={handleOpenAdd} className="gap-1.5 text-xs font-bold shadow-sm">
+                <UserPlus className="h-4 w-4" /> + เพิ่มพนักงานใหม่
               </Button>
-            </a>
-            <Button variant="industrial" size="sm" onClick={handleOpenAdd} className="gap-1.5 text-xs font-bold shadow-sm">
-              <UserPlus className="h-4 w-4" /> + เพิ่มพนักงานใหม่
-            </Button>
+            )}
           </div>
         ) : (
           <Button variant="outline" size="sm" onClick={handleBackToList} className="gap-1.5 text-xs">
@@ -561,12 +522,6 @@ const UserManagement = () => {
                         </th>
                         <th className="py-2.5 px-4">
                           <div className="flex flex-col">
-                            <span className="text-xs font-bold text-foreground">รหัสผ่าน</span>
-                            <span className="text-[10px] text-muted-foreground/80 font-mono tracking-wider">PASSWORD</span>
-                          </div>
-                        </th>
-                        <th className="py-2.5 px-4">
-                          <div className="flex flex-col">
                             <span className="text-xs font-bold text-foreground">สถานะบัญชี</span>
                             <span className="text-[10px] text-muted-foreground/80 font-mono tracking-wider">ACCOUNT STATUS</span>
                           </div>
@@ -580,12 +535,8 @@ const UserManagement = () => {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-border/60">
-                      {filteredUsers.map((user) => {
-                        const pass = getUserPassword(user.emp_id);
-                        const isPassVisible = visiblePasswords[user.emp_id];
-
-                        return (
-                          <tr key={user.id} className="hover:bg-muted/30 transition-colors">
+                      {filteredUsers.map((user) => (
+                        <tr key={user.id} className="hover:bg-muted/30 transition-colors">
                             <td className="py-3.5 px-4 font-mono font-bold text-blue-600 dark:text-blue-400">{user.emp_id}</td>
                             <td className="py-3.5 px-4 font-bold text-foreground">{user.name}</td>
                             <td className="py-3.5 px-4">{getRoleBadge(user.role)}</td>
@@ -594,21 +545,6 @@ const UserManagement = () => {
                                 <Building2 className="h-3.5 w-3.5 text-muted-foreground/70" />
                                 {user.department_name}
                               </span>
-                            </td>
-                            <td className="py-3.5 px-4 font-mono">
-                              <div className="flex items-center gap-1.5 bg-muted/40 px-2.5 py-1 rounded-md border border-border/60 w-fit">
-                                <span className="text-[11px] font-semibold tracking-wider">
-                                  {isPassVisible ? pass : "••••••••"}
-                                </span>
-                                <button
-                                  type="button"
-                                  onClick={() => togglePasswordVisibility(user.emp_id)}
-                                  className="text-muted-foreground hover:text-foreground transition-colors ml-1"
-                                  title={isPassVisible ? "ซ่อนรหัสผ่าน" : "แสดงรหัสผ่าน"}
-                                >
-                                  {isPassVisible ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
-                                </button>
-                              </div>
                             </td>
                             <td className="py-3.5 px-4">
                               {user.is_active ? (
@@ -622,38 +558,41 @@ const UserManagement = () => {
                               )}
                             </td>
                             <td className="py-3.5 px-4 text-center">
-                              <div className="flex items-center justify-center gap-1.5 mx-auto">
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  onClick={() => handleOpenEdit(user)}
-                                  className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-muted"
-                                  title="แก้ไขข้อมูลและเปลี่ยนรหัสพนักงาน"
-                                >
-                                  <Edit className="h-4 w-4" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  onClick={() => {
-                                    setSelectedUser(user);
-                                    setIsResetOpen(true);
-                                  }}
-                                  className="h-8 w-8 text-muted-foreground hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950"
-                                  title="ตั้งรหัสผ่านใหม่"
-                                >
-                                  <KeyRound className="h-4 w-4" />
-                                </Button>
-                                <Switch
-                                  checked={user.is_active}
-                                  onCheckedChange={() => handleToggleStatus(user)}
-                                  title={user.is_active ? "คลิกเพื่อระงับใช้งาน" : "คลิกเพื่อเปิดใช้งาน"}
-                                />
-                              </div>
+                              {canManageUsers ? (
+                                <div className="flex items-center justify-center gap-1.5 mx-auto">
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => handleOpenEdit(user)}
+                                    className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-muted"
+                                    title="แก้ไขข้อมูลและเปลี่ยนรหัสพนักงาน"
+                                  >
+                                    <Edit className="h-4 w-4" />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => {
+                                      setSelectedUser(user);
+                                      setIsResetOpen(true);
+                                    }}
+                                    className="h-8 w-8 text-muted-foreground hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950"
+                                    title="ตั้งรหัสผ่านใหม่"
+                                  >
+                                    <KeyRound className="h-4 w-4" />
+                                  </Button>
+                                  <Switch
+                                    checked={user.is_active}
+                                    onCheckedChange={() => handleToggleStatus(user)}
+                                    title={user.is_active ? "คลิกเพื่อระงับใช้งาน" : "คลิกเพื่อเปิดใช้งาน"}
+                                  />
+                                </div>
+                              ) : (
+                                <span className="text-[11px] text-muted-foreground">ดูได้อย่างเดียว</span>
+                              )}
                             </td>
                           </tr>
-                        );
-                      })}
+                        ))}
                     </tbody>
                   </table>
                 </div>

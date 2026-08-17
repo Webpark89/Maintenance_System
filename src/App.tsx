@@ -15,6 +15,9 @@ import AssetManagement from "./pages/AssetManagement.tsx";
 import Dashboard from "./pages/Dashboard.tsx";
 import UserManagement from "./pages/UserManagement.tsx";
 import RoleManagement from "./pages/RoleManagement.tsx";
+import InventoryManagement from "./pages/InventoryManagement.tsx";
+import PMSchedule from "./pages/PMSchedule.tsx";
+import AuditLogs from "./pages/AuditLogs.tsx";
 import NotFound from "./pages/NotFound.tsx";
 
 const queryClient = new QueryClient();
@@ -32,7 +35,7 @@ const App = () => (
           <Route
             path="/dashboard"
             element={
-              <ProtectedRoute allowedRoles={["supervisor"]}>
+              <ProtectedRoute requiredPermission="dashboard:view">
                 <Dashboard />
               </ProtectedRoute>
             }
@@ -41,7 +44,7 @@ const App = () => (
           <Route
             path="/users"
             element={
-              <ProtectedRoute allowedRoles={["supervisor"]}>
+              <ProtectedRoute requiredPermission="user:read">
                 <UserManagement />
               </ProtectedRoute>
             }
@@ -50,8 +53,35 @@ const App = () => (
           <Route
             path="/roles"
             element={
-              <ProtectedRoute allowedRoles={["supervisor"]}>
+              <ProtectedRoute requiredPermission="role:manage">
                 <RoleManagement />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/inventory"
+            element={
+              <ProtectedRoute requiredPermission="inventory:read">
+                <InventoryManagement />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/pm-schedules"
+            element={
+              <ProtectedRoute requiredPermission="pm:read">
+                <PMSchedule />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/audit-logs"
+            element={
+              <ProtectedRoute requiredPermission="audit_log:read">
+                <AuditLogs />
               </ProtectedRoute>
             }
           />
@@ -59,7 +89,7 @@ const App = () => (
           <Route
             path="/board"
             element={
-              <ProtectedRoute allowedRoles={["technician", "supervisor"]}>
+              <ProtectedRoute requiredPermission="work_order:read">
                 <TechnicianBoard />
               </ProtectedRoute>
             }
@@ -68,7 +98,7 @@ const App = () => (
           <Route
             path="/assets"
             element={
-              <ProtectedRoute allowedRoles={["technician", "supervisor"]}>
+              <ProtectedRoute requiredPermission="asset:read">
                 <AssetManagement />
               </ProtectedRoute>
             }
@@ -77,7 +107,7 @@ const App = () => (
           <Route
             path="/request"
             element={
-              <ProtectedRoute allowedRoles={["requester", "technician", "supervisor"]}>
+              <ProtectedRoute requiredPermission="work_order:create">
                 <RequestForm />
               </ProtectedRoute>
             }
@@ -86,7 +116,7 @@ const App = () => (
           <Route
             path="/notifications"
             element={
-              <ProtectedRoute allowedRoles={["requester", "technician", "supervisor"]}>
+              <ProtectedRoute>
                 <NotificationCenter />
               </ProtectedRoute>
             }
@@ -95,7 +125,7 @@ const App = () => (
           <Route
             path="/assessment/:id"
             element={
-              <ProtectedRoute allowedRoles={["technician", "supervisor"]}>
+              <ProtectedRoute requiredAnyPermissions={["work_order:assess", "work_order:read"]}>
                 <AssessmentForm />
               </ProtectedRoute>
             }

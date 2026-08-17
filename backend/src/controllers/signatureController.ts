@@ -18,6 +18,12 @@ export async function saveDualSignature(req: AuthenticatedRequest, res: Response
     }
 
     const requestId = Number(id);
+    if (isNaN(requestId) || requestId <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'รหัสใบแจ้งซ่อมไม่ถูกต้อง (ต้องเป็นตัวเลข)',
+      });
+    }
 
     // Verify maintenance request exists
     const request = await prisma.maintenance_requests.findUnique({

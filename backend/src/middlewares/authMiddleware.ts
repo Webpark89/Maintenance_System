@@ -76,7 +76,7 @@ export function authorize(roles: string[]) {
   };
 }
 
-export function requirePermission(permissionCode: string) {
+export function requirePermission(permissionCode: string | string[]) {
   return (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     if (!req.user) {
       return res.status(401).json({
@@ -89,10 +89,17 @@ export function requirePermission(permissionCode: string) {
     // Allow supervisor role as master fallback for system protection if specified
     const isSupervisor = req.user.role === 'supervisor' || req.user.roleCode === 'supervisor';
 
-    if (!userPermissions.includes(permissionCode) && !isSupervisor) {
+    if (isSupervisor) {
+      return next();
+    }
+
+    const requiredList = Array.isArray(permissionCode) ? permissionCode : [permissionCode];
+    const hasAny = requiredList.some((code) => userPermissions.includes(code));
+
+    if (!hasAny) {
       return res.status(403).json({
         success: false,
-        message: `คุณไม่มีสิทธิ์ [${permissionCode}] ในการทำรายการนี้ (Forbidden)`,
+        message: `คุณไม่มีสิทธิ์ [${requiredList.join(', ')}] ในการทำรายการนี้ (Forbidden)`,
       });
     }
 

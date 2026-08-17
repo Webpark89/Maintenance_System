@@ -7,19 +7,20 @@ import {
   toggleUserStatus,
   resetPassword,
 } from '../controllers/userController.js';
-import { authenticate, authorize } from '../middlewares/authMiddleware.js';
+import { authenticate, requirePermission } from '../middlewares/authMiddleware.js';
 
 const router = Router();
 
-// Protect all user management routes - Require Supervisor authentication
 router.use(authenticate);
-router.use(authorize(['supervisor']));
 
-router.get('/', getUsers);
-router.get('/departments', getDepartments);
-router.post('/', createUser);
-router.put('/:id', updateUser);
-router.patch('/:id/status', toggleUserStatus);
-router.post('/:id/reset-password', resetPassword);
+// Read endpoints require 'user:read' permission (or supervisor)
+router.get('/', requirePermission('user:read'), getUsers);
+router.get('/departments', requirePermission('user:read'), getDepartments);
+
+// Modification endpoints require 'user:manage' permission (or supervisor)
+router.post('/', requirePermission('user:manage'), createUser);
+router.put('/:id', requirePermission('user:manage'), updateUser);
+router.patch('/:id/status', requirePermission('user:manage'), toggleUserStatus);
+router.post('/:id/reset-password', requirePermission('user:manage'), resetPassword);
 
 export default router;

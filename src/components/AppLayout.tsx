@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Bell, ArrowLeft, Wrench, ClipboardList, LogOut, User } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useRequests } from "@/lib/requestStore";
-import { getCurrentUser, getUserDefaultRoute } from "@/lib/auth";
+import { getCurrentUser, getUserDefaultRoute, refreshCurrentUserFromApi } from "@/lib/auth";
 
 const FALLBACK_REQUESTER_NAME = "นภดล ฝ่ายผลิต";
 const normalizeName = (name: string) => name.toLowerCase().replace(/[^\p{L}\p{N}]/gu, "");
@@ -30,9 +30,18 @@ export function AppLayout({
   const navigate = useNavigate();
   const location = useLocation();
   const allRequests = useRequests();
-  const user = useMemo(() => getCurrentUser(), []);
+  const [user, setUser] = React.useState(() => getCurrentUser());
+
+  React.useEffect(() => {
+    const u = getCurrentUser();
+    if (u) setUser(u);
+    refreshCurrentUserFromApi().then((updated) => {
+      if (updated) setUser(updated);
+    });
+  }, [location.pathname]);
+
   const userRole = user?.role || "technician";
-  const isRequester = userRole === "requester";
+  const isRequester = userRole === "requester" && (!user?.permissions || user.permissions.length === 0 || (user.permissions.length <= 2 && user.permissions.every(p => p.startsWith("work_order:"))));
   const currentUserName = user?.name || FALLBACK_REQUESTER_NAME;
   const currentUserId = user?.emp_id || "REQ042";
   const userDepartment = user?.department || "ฝ่ายผลิต";

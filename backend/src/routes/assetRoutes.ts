@@ -1,14 +1,13 @@
 import { Router } from 'express';
 import { getAllAssets, getAssetByCode, createAsset } from '../controllers/assetController.js';
-import { authenticate } from '../middlewares/authMiddleware.js';
-import { roleGuard } from '../middlewares/roleGuard.js';
+import { authenticate, requirePermission } from '../middlewares/authMiddleware.js';
 
 const router = Router();
 
 router.use(authenticate);
 
-router.get('/', getAllAssets);
-router.get('/:code', getAssetByCode);
-router.post('/', roleGuard(['technician', 'supervisor']), createAsset);
+router.get('/', requirePermission('asset:read'), getAllAssets);
+router.get('/:code', requirePermission('asset:read'), getAssetByCode);
+router.post('/', requirePermission('asset:create'), createAsset);
 
 export default router;

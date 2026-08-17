@@ -168,9 +168,15 @@ export async function createUser(req: AuthenticatedRequest, res: Response) {
   }
 }
 
+import { resetLoginAttempts } from '../utils/loginRateLimiter.js';
+
 export async function updateUser(req: AuthenticatedRequest, res: Response) {
   try {
     const userId = Number(req.params.id);
+    if (isNaN(userId) || userId <= 0) {
+      return res.status(400).json({ success: false, message: 'รหัสผู้ใช้งานไม่ถูกต้อง (ต้องเป็นตัวเลข)' });
+    }
+
     const { emp_id, name, role, role_id, department_id, skills } = req.body || {};
 
     const targetUser = await prisma.users.findUnique({ where: { id: userId } });
@@ -248,7 +254,11 @@ export async function updateUser(req: AuthenticatedRequest, res: Response) {
       },
     });
   } catch (error: any) {
-    return res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการอัปเดตข้อมูลผู้ใช้' });
+    console.error('Update user error:', error);
+    if (error?.code === 'P2002') {
+      return res.status(409).json({ success: false, message: 'รหัสพนักงานนี้มีอยู่ในระบบแล้ว' });
+    }
+    return res.status(500).json({ success: false, message: error?.message || 'เกิดข้อผิดพลาดในการอัปเดตข้อมูลผู้ใช้' });
   }
 }
 
@@ -256,6 +266,10 @@ export async function updateUser(req: AuthenticatedRequest, res: Response) {
 export async function toggleUserStatus(req: AuthenticatedRequest, res: Response) {
   try {
     const userId = Number(req.params.id);
+    if (isNaN(userId) || userId <= 0) {
+      return res.status(400).json({ success: false, message: 'รหัสผู้ใช้งานไม่ถูกต้อง (ต้องเป็นตัวเลข)' });
+    }
+
     const { is_active } = req.body || {};
 
     const targetUser = await prisma.users.findUnique({ where: { id: userId } });
@@ -276,6 +290,11 @@ export async function toggleUserStatus(req: AuthenticatedRequest, res: Response)
       data: { is_active: Boolean(is_active) },
     });
 
+    if (updatedUser.is_active) {
+      // Reset rate limit lockout when admin re-enables user
+      resetLoginAttempts(`127.0.0.1:${updatedUser.emp_id.toUpperCase()}`);
+    }
+
     const statusText = updatedUser.is_active ? 'เปิดใช้งานบัญชี' : 'ระงับการใช้งานบัญชี';
 
     return res.json({
@@ -287,7 +306,8 @@ export async function toggleUserStatus(req: AuthenticatedRequest, res: Response)
       },
     });
   } catch (error: any) {
-    return res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการเปลี่ยนสถานะบัญชี' });
+    console.error('Toggle user status error:', error);
+    return res.status(500).json({ success: false, message: error?.message || 'เกิดข้อผิดพลาดในการเปลี่ยนสถานะบัญชี' });
   }
 }
 
@@ -295,6 +315,10 @@ export async function toggleUserStatus(req: AuthenticatedRequest, res: Response)
 export async function resetPassword(req: AuthenticatedRequest, res: Response) {
   try {
     const userId = Number(req.params.id);
+    if (isNaN(userId) || userId <= 0) {
+      return res.status(400).json({ success: false, message: 'รหัสผู้ใช้งานไม่ถูกต้อง (ต้องเป็นตัวเลข)' });
+    }
+
     const { new_password } = req.body || {};
 
     if (!new_password || new_password.trim().length < 4) {
@@ -313,14 +337,18 @@ export async function resetPassword(req: AuthenticatedRequest, res: Response) {
 
     await prisma.users.update({
       where: { id: userId },
-      data: { password_hash },
+      data: { password_hash, is_active: true }, // Automatically activate account upon password reset
     });
+
+    // Reset rate limit lockout when password is reset by admin
+    resetLoginAttempts(`127.0.0.1:${targetUser.emp_id.toUpperCase()}`);
 
     return res.json({
       success: true,
       message: `รีเซ็ตรหัสผ่านใหม่สำหรับ ${targetUser.name} เรียบร้อยแล้ว`,
     });
   } catch (error: any) {
-    return res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการรีเซ็ตรหัสผ่าน' });
+    console.error('Reset password error:', error);
+    return res.status(500).json({ success: false, message: error?.message || 'เกิดข้อผิดพลาดในการรีเซ็ตรหัสผ่าน' });
   }
 }

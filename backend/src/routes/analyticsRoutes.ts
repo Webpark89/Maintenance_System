@@ -1,13 +1,12 @@
 import { Router } from 'express';
 import { getKPIMetrics } from '../controllers/analyticsController.js';
-import { authenticate } from '../middlewares/authMiddleware.js';
-import { roleGuard } from '../middlewares/roleGuard.js';
+import { authenticate, requirePermission } from '../middlewares/authMiddleware.js';
 
 const router = Router();
 
 router.use(authenticate);
 
-// Restricted strictly to Supervisor role for KPI Analytics
-router.get('/kpi', roleGuard(['supervisor']), getKPIMetrics);
+// Restricted to users with 'dashboard:view' permission (or Supervisor)
+router.get('/kpi', requirePermission('dashboard:view'), getKPIMetrics);
 
 export default router;

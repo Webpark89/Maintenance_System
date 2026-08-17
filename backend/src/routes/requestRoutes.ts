@@ -5,16 +5,15 @@ import {
   updateRequestStatus,
   assignTechnician,
 } from '../controllers/requestController.js';
-import { authenticate } from '../middlewares/authMiddleware.js';
-import { roleGuard } from '../middlewares/roleGuard.js';
+import { authenticate, requirePermission } from '../middlewares/authMiddleware.js';
 
 const router = Router();
 
 router.use(authenticate);
 
-router.get('/', getAllRequests);
-router.post('/', createRequest);
-router.patch('/:id/status', roleGuard(['technician', 'supervisor']), updateRequestStatus);
-router.patch('/:id/assign', roleGuard(['supervisor']), assignTechnician);
+router.get('/', requirePermission('work_order:read'), getAllRequests);
+router.post('/', requirePermission('work_order:create'), createRequest);
+router.patch('/:id/status', requirePermission(['work_order:assess', 'work_order:assign']), updateRequestStatus);
+router.patch('/:id/assign', requirePermission('work_order:assign'), assignTechnician);
 
 export default router;

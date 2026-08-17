@@ -3,6 +3,13 @@ import { prisma } from '../config/db.js';
 import { generateToken } from '../utils/jwt.js';
 import { comparePassword } from '../utils/password.js';
 import { AuthenticatedRequest } from '../middlewares/authMiddleware.js';
+import {
+  checkLoginRateLimit,
+  recordFailedLogin,
+  resetLoginAttempts,
+  formatCooldownTime,
+} from '../utils/loginRateLimiter.js';
+import { logAudit, getCleanIp } from '../utils/auditLogger.js';
 
 export async function login(req: Request, res: Response) {
   try {
@@ -15,11 +22,35 @@ export async function login(req: Request, res: Response) {
       });
     }
 
+    const clientIp = getCleanIp(req);
+    const rateLimitKey = `${clientIp}:${String(username).trim().toUpperCase()}`;
+
+    // 1. Check Rate Limit & Cooldown Lockout
+    const rateLimitStatus = checkLoginRateLimit(rateLimitKey);
+    if (rateLimitStatus.isPermanentlyLocked) {
+      return res.status(429).json({
+        success: false,
+        message: 'บัญชีนี้ถูกระงับชั่วคราวเนื่องจากพิมพ์รหัสผ่านผิดเกิน 15 ครั้ง กรุณาติดต่อหัวหน้างานหรือผู้ดูแลระบบเพื่อปลดล็อก',
+        isPermanentlyLocked: true,
+      });
+    }
+
+    if (rateLimitStatus.isLocked) {
+      const waitTimeFormatted = formatCooldownTime(rateLimitStatus.remainingSeconds);
+      return res.status(429).json({
+        success: false,
+        message: `คุณพิมพ์รหัสผ่านผิดเกินกำหนด กรุณารออีก ${waitTimeFormatted} ก่อนลองใหม่อีกครั้ง (ครั้งที่ ${rateLimitStatus.attemptCount})`,
+        cooldownSeconds: rateLimitStatus.remainingSeconds,
+        attemptCount: rateLimitStatus.attemptCount,
+      });
+    }
+
     const user = await prisma.users.findFirst({
       where: {
         OR: [
-          { emp_id: username },
-          { name: { contains: username } }
+          { emp_id: String(username).trim().toUpperCase() },
+          { emp_id: String(username).trim() },
+          { name: { contains: String(username).trim() } }
         ]
       },
       include: {
@@ -35,26 +66,67 @@ export async function login(req: Request, res: Response) {
     });
 
     if (!user) {
+      const failResult = recordFailedLogin(rateLimitKey);
       return res.status(401).json({
         success: false,
-        message: 'ไม่พบชื่อผู้ใช้งานนี้ในระบบ',
+        message: 'ไม่พบชื่อผู้ใช้งานหรือรหัสพนักงานนี้ในระบบ',
+        attemptCount: failResult.attemptCount,
       });
     }
 
     if (user.is_active === false) {
       return res.status(403).json({
         success: false,
-        message: 'บัญชีนี้ถูกระงับการใช้งานชั่วคราว\nกรุณาติดต่อหัวหน้าช่าง หรือผู้ดูแลระบบ',
+        message: 'บัญชีนี้ถูกระงับการใช้งานชั่วคราว\nกรุณาติดต่อหัวหน้าช่าง หรือผู้ดูแลระบบเพื่อเปิดใช้งาน',
       });
     }
 
     const isPasswordValid = await comparePassword(password, user.password_hash);
     if (!isPasswordValid) {
+      const failResult = recordFailedLogin(rateLimitKey);
+
+      // If reached 15 failed attempts, also lock user in database
+      if (failResult.isPermanentlyLocked) {
+        await prisma.users.update({
+          where: { id: user.id },
+          data: { is_active: false },
+        });
+
+        return res.status(429).json({
+          success: false,
+          message: 'คุณพิมพ์รหัสผ่านผิดครบ 15 ครั้ง บัญชีจึงถูกระงับ กรุณาติดต่อผู้ดูแลระบบเพื่อปลดล็อกหรือรีเซ็ตรหัสผ่าน',
+          isPermanentlyLocked: true,
+        });
+      }
+
+      if (failResult.cooldownSeconds > 0) {
+        const waitTimeFormatted = formatCooldownTime(failResult.cooldownSeconds);
+        return res.status(429).json({
+          success: false,
+          message: `รหัสผ่านไม่ถูกต้อง (ครั้งที่ ${failResult.attemptCount}) กรุณารออีก ${waitTimeFormatted} ก่อนลองใหม่`,
+          cooldownSeconds: failResult.cooldownSeconds,
+          attemptCount: failResult.attemptCount,
+        });
+      }
+
+      const remainingBeforeCooldown = 4 - failResult.attemptCount;
       return res.status(401).json({
         success: false,
-        message: 'รหัสผ่านไม่ถูกต้อง',
+        message: `รหัสผ่านไม่ถูกต้อง (เหลือโอกาสลองอีก ${remainingBeforeCooldown} ครั้ง ก่อนระบบเริ่มหน่วงเวลา)`,
+        attemptCount: failResult.attemptCount,
       });
     }
+
+    // Successful login: Reset failed attempts counter
+    resetLoginAttempts(rateLimitKey);
+
+    await logAudit({
+      req: { ...req, user: { userId: user.id, name: user.name, empId: user.emp_id } },
+      action: 'LOGIN_SUCCESS',
+      module: 'AUTH',
+      targetId: user.id,
+      details: { emp_id: user.emp_id, role: user.role, ip: clientIp },
+    });
 
     const permissions = user.roles?.role_permissions.map((rp) => rp.permissions.code) || [];
     const roleCode = user.roles?.code || user.role;

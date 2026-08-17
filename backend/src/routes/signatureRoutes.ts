@@ -1,13 +1,12 @@
 import { Router } from 'express';
 import { saveDualSignature } from '../controllers/signatureController.js';
-import { authenticate } from '../middlewares/authMiddleware.js';
-import { roleGuard } from '../middlewares/roleGuard.js';
+import { authenticate, requirePermission } from '../middlewares/authMiddleware.js';
 
 const router = Router();
 
 router.use(authenticate);
 
-// Restricted strictly to Supervisor role on Server-Side Guard
-router.post('/:id', roleGuard(['supervisor']), saveDualSignature);
+// Restricted to users with 'work_order:assess' permission (or Supervisor)
+router.post('/:id', requirePermission(['work_order:assess', 'work_order:read']), saveDualSignature);
 
 export default router;

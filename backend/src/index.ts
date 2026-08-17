@@ -17,10 +17,14 @@ import uploadRoutes from './routes/uploadRoutes.js';
 import userRoutes from './routes/userRoutes.js';
 import roleRoutes from './routes/roleRoutes.js';
 import permissionRoutes from './routes/permissionRoutes.js';
+import partRoutes from './routes/partRoutes.js';
+import pmRoutes from './routes/pmRoutes.js';
+import auditLogRoutes from './routes/auditLogRoutes.js';
 
 dotenv.config();
 
 const app = express();
+app.set('trust proxy', true);
 const server = http.createServer(app);
 const PORT = process.env.PORT || 5000;
 
@@ -37,7 +41,7 @@ app.use(
 // Security Middleware: Rate Limiter (ป้องกัน Brute Force & DDoS)
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 300, // Limit each IP to 300 requests per windowMs
+  max: 3000, // Limit each IP to 3,000 requests per windowMs
   message: { success: false, message: 'คำขอถี่เกินไป กรุณาลองใหม่อีกครั้งในภายหลัง' },
   standardHeaders: true,
   legacyHeaders: false,
@@ -64,7 +68,7 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // Custom JSON Parsing Error Handler (ป้องกัน Malformed JSON หรือ Bad Escaping)
 app.use((err: any, req: Request, res: Response, next: NextFunction) => {
-  if (err instanceof SyntaxError && 'status' in err && err.status === 400 && 'body' in err) {
+  if (err instanceof SyntaxError || (err && (err.status === 400 || err.statusCode === 400) && 'body' in err)) {
     return res.status(400).json({
       success: false,
       message: 'รูปแบบข้อมูล JSON ไม่ถูกต้อง (Invalid JSON format / Bad escaping)',
@@ -89,6 +93,9 @@ app.use('/api/v1/users', userRoutes);
 app.use('/api/v1/roles', roleRoutes);
 app.use('/api/v1/permissions', permissionRoutes);
 app.use('/api/v1/assets', assetRoutes);
+app.use('/api/v1/parts', partRoutes);
+app.use('/api/v1/pm', pmRoutes);
+app.use('/api/v1/audit-logs', auditLogRoutes);
 app.use('/api/v1/requests', requestRoutes);
 app.use('/api/v1/signatures', signatureRoutes);
 app.use('/api/v1/analytics', analyticsRoutes);

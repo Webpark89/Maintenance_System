@@ -19,9 +19,10 @@ import {
 import { toast } from "@/components/ui/sonner";
 import { api } from "@/lib/api";
 import { connectSocket } from "@/lib/socket";
+import { getUserDefaultRoute } from "@/lib/auth";
 import RainBackground from "@/components/RainBackground";
 
-type Role = "technician" | "requester" | "supervisor";
+type Role = "technician" | "requester" | "supervisor" | string;
 
 export const RainLoginPage: React.FC = () => {
   const navigate = useNavigate();
@@ -44,28 +45,6 @@ export const RainLoginPage: React.FC = () => {
 
     setLoading(true);
 
-    const upperUser = username.trim().toUpperCase();
-
-    // Check if password was changed/reset locally
-    let localPassword: string | null = null;
-    try {
-      const rawPasswords = localStorage.getItem("fixflow_user_passwords");
-      if (rawPasswords) {
-        const store = JSON.parse(rawPasswords);
-        if (store[upperUser]) {
-          localPassword = store[upperUser];
-        }
-      }
-    } catch {
-      // Ignore store parse errors
-    }
-
-    if (localPassword && password.trim() !== localPassword) {
-      toast.error("รหัสพนักงานหรือรหัสผ่านไม่ถูกต้อง");
-      setLoading(false);
-      return;
-    }
-
     try {
       // API Attempt
       const res = await api.post("/auth/login", {
@@ -77,7 +56,10 @@ export const RainLoginPage: React.FC = () => {
       const userPayload = {
         emp_id: user.emp_id,
         name: user.name,
-        role: user.role as Role,
+        role: user.role,
+        role_id: user.role_id,
+        role_name: user.role_name,
+        permissions: user.permissions || [],
         department: user.department,
         skills: user.skills || [],
         token: token,
@@ -88,13 +70,7 @@ export const RainLoginPage: React.FC = () => {
 
       toast.success(res.data.message || `เข้าสู่ระบบสำเร็จ: ${user.name}`);
 
-      if (user.role === "requester") {
-        navigate("/request");
-      } else if (user.role === "supervisor") {
-        navigate("/dashboard");
-      } else {
-        navigate("/board");
-      }
+      navigate(getUserDefaultRoute(userPayload));
     } catch (err: any) {
       console.warn("Backend API login response fallback:", err);
 
@@ -115,20 +91,7 @@ export const RainLoginPage: React.FC = () => {
 
       // Fallback mode for demo
       const upperUser = username.trim().toUpperCase();
-
-      // Check updated password store
-      let expectedPassword = "demo1234";
-      try {
-        const rawPasswords = localStorage.getItem("fixflow_user_passwords");
-        if (rawPasswords) {
-          const store = JSON.parse(rawPasswords);
-          if (store[upperUser]) {
-            expectedPassword = store[upperUser];
-          }
-        }
-      } catch {
-        // Ignore store parse errors
-      }
+      const expectedPassword = "demo1234";
 
       if (password.trim() !== expectedPassword) {
         toast.error("รหัสพนักงานหรือรหัสผ่านไม่ถูกต้อง");
@@ -171,13 +134,7 @@ export const RainLoginPage: React.FC = () => {
       toast.info("เซิร์ฟเวอร์หลักยังไม่ได้เชื่อมต่อ เข้าสู่ระบบในโหมดสาธิต (Demo)");
       toast.success(`เข้าสู่ระบบสำเร็จ: ${name}`);
 
-      if (detectedRole === "requester") {
-        navigate("/request");
-      } else if (detectedRole === "supervisor") {
-        navigate("/dashboard");
-      } else {
-        navigate("/board");
-      }
+      navigate(getUserDefaultRoute(fallbackPayload));
     } finally {
       setLoading(false);
     }

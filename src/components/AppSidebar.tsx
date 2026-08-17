@@ -24,9 +24,13 @@ import {
   User,
   Users,
   ShieldCheck,
+  CalendarClock,
+  Package,
+  History,
 } from "lucide-react";
 import { useRequests } from "@/lib/requestStore";
 import { getCurrentUser, getUserDefaultRoute, refreshCurrentUserFromApi, UserPayload } from "@/lib/auth";
+import { hasPermission } from "@/lib/rbac";
 
 const FALLBACK_REQUESTER_NAME = "นภดล ฝ่ายผลิต";
 const normalizeName = (name: string) => name.toLowerCase().replace(/[^\p{L}\p{N}]/gu, "");
@@ -73,47 +77,78 @@ export function AppSidebar() {
     }
   };
 
-  // Nav Items
+  // Nav Items configured with granular permissions
   const navItems = [
     {
       to: "/dashboard",
       label: "Dashboard สถิติ",
       icon: LayoutDashboard,
-      roles: ["supervisor"],
+      permission: "dashboard:view",
+      fallbackRoles: ["supervisor"],
     },
     {
       to: "/board",
       label: "บอร์ดจัดการงานซ่อม",
       icon: Wrench,
-      roles: ["technician", "supervisor"],
+      permission: "work_order:read",
+      fallbackRoles: ["technician", "supervisor"],
+    },
+    {
+      to: "/pm-schedules",
+      label: "แผนบำรุงรักษา PM",
+      icon: CalendarClock,
+      permission: "pm:read",
+      fallbackRoles: ["technician", "supervisor"],
+    },
+    {
+      to: "/inventory",
+      label: "คลังอะไหล่ & สต็อก",
+      icon: Package,
+      permission: "inventory:read",
+      fallbackRoles: ["technician", "supervisor"],
     },
     {
       to: "/request",
       label: "แจ้งซ่อมใหม่ / QR",
       icon: ClipboardList,
-      roles: ["requester", "technician", "supervisor"],
+      permission: "work_order:create",
+      fallbackRoles: ["requester", "technician", "supervisor"],
     },
     {
       to: "/assets",
       label: "ทรัพย์สิน & QR Tag",
       icon: Building,
-      roles: ["technician", "supervisor"],
+      permission: "asset:read",
+      fallbackRoles: ["technician", "supervisor"],
     },
     {
       to: "/users",
       label: "จัดการผู้ใช้งาน",
       icon: Users,
-      roles: ["supervisor"],
+      permission: "user:read",
+      fallbackRoles: ["supervisor"],
     },
     {
       to: "/roles",
       label: "จัดการบทบาท & สิทธิ์",
       icon: ShieldCheck,
-      roles: ["supervisor"],
+      permission: "role:manage",
+      fallbackRoles: ["supervisor"],
+    },
+    {
+      to: "/audit-logs",
+      label: "ประวัติการใช้งาน (Audit)",
+      icon: History,
+      permission: "audit_log:read",
+      fallbackRoles: ["supervisor"],
     },
   ];
 
-  const filteredNavItems = navItems.filter((item) => item.roles.includes(userRole));
+  const filteredNavItems = navItems.filter((item) => {
+    if (user?.role === "supervisor") return true;
+    if (item.permission && hasPermission(item.permission, user)) return true;
+    return item.fallbackRoles?.includes(userRole) ?? false;
+  });
 
   return (
     <Sidebar variant="inset" collapsible="icon" className="border-r border-border bg-sidebar text-sidebar-foreground">

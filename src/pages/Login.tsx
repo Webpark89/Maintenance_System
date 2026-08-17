@@ -8,8 +8,9 @@ import { Wrench, ShieldCheck, Loader2, Fingerprint, Lock, User, LogIn, CheckCirc
 import { toast } from "@/components/ui/sonner";
 import { api } from "@/lib/api";
 import { connectSocket } from "@/lib/socket";
+import { getUserDefaultRoute } from "@/lib/auth";
 
-type Role = "technician" | "requester" | "supervisor";
+type Role = "technician" | "requester" | "supervisor" | string;
 
 const Login = () => {
   const navigate = useNavigate();
@@ -32,28 +33,6 @@ const Login = () => {
 
     setLoading(true);
 
-    const upperUser = username.trim().toUpperCase();
-
-    // Check if password was changed/reset locally
-    let localPassword: string | null = null;
-    try {
-      const rawPasswords = localStorage.getItem("fixflow_user_passwords");
-      if (rawPasswords) {
-        const store = JSON.parse(rawPasswords);
-        if (store[upperUser]) {
-          localPassword = store[upperUser];
-        }
-      }
-    } catch {
-      // Ignore store parse errors
-    }
-
-    if (localPassword && password.trim() !== localPassword) {
-      toast.error("รหัสพนักงานหรือรหัสผ่านไม่ถูกต้อง");
-      setLoading(false);
-      return;
-    }
-
     try {
       // Call Backend API Endpoint POST /api/v1/auth/login
       const res = await api.post("/auth/login", {
@@ -66,7 +45,10 @@ const Login = () => {
       const userPayload = {
         emp_id: user.emp_id,
         name: user.name,
-        role: user.role as Role,
+        role: user.role,
+        role_id: user.role_id,
+        role_name: user.role_name,
+        permissions: user.permissions || [],
         department: user.department,
         skills: user.skills || [],
         token: token,
@@ -77,14 +59,9 @@ const Login = () => {
 
       toast.success(res.data.message || `ยืนยันตัวตน SSO สำเร็จ: ${user.name}`);
 
-      // Auto Redirect based on Role from DB
-      if (user.role === "requester") {
-        navigate("/request");
-      } else if (user.role === "supervisor") {
-        navigate("/dashboard");
-      } else {
-        navigate("/board");
-      }
+      // Auto Redirect based on dynamic role & permissions
+      const targetRoute = getUserDefaultRoute(userPayload);
+      navigate(targetRoute);
     } catch (err: any) {
       console.warn("Backend API login response:", err);
 
@@ -105,20 +82,7 @@ const Login = () => {
 
       // Fallback mode when backend server is temporarily unreachable or starting up
       const upperUser = username.trim().toUpperCase();
-
-      // Check updated password store
-      let expectedPassword = "demo1234";
-      try {
-        const rawPasswords = localStorage.getItem("fixflow_user_passwords");
-        if (rawPasswords) {
-          const store = JSON.parse(rawPasswords);
-          if (store[upperUser]) {
-            expectedPassword = store[upperUser];
-          }
-        }
-      } catch {
-        // Ignore store parse errors
-      }
+      const expectedPassword = "demo1234";
 
       if (password.trim() !== expectedPassword) {
         toast.error("รหัสพนักงานหรือรหัสผ่านไม่ถูกต้อง");
@@ -160,13 +124,7 @@ const Login = () => {
       toast.info("เซิร์ฟเวอร์หลักยังไม่ได้เปิดใช้งาน ยืนยันตัวตนด้วยบัญชีโหมดสำรอง");
       toast.success(`เข้าสู่ระบบ SSO สำเร็จ: ${name}`);
 
-      if (detectedRole === "requester") {
-        navigate("/request");
-      } else if (detectedRole === "supervisor") {
-        navigate("/dashboard");
-      } else {
-        navigate("/board");
-      }
+      navigate(getUserDefaultRoute(fallbackPayload));
     } finally {
       setLoading(false);
     }

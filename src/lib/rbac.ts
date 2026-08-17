@@ -5,16 +5,18 @@ import { WorkRequest } from "./mockData";
  * Checks if the given user has a specific permission code.
  * Enforces strict Default Deny (Allowlist) principle.
  */
-export function hasPermission(permissionCode: string, targetUser?: UserPayload | null): boolean {
+export function hasPermission(permissionCode: string | string[], targetUser?: UserPayload | null): boolean {
   const user = targetUser !== undefined ? targetUser : getCurrentUser();
   if (!user) return false;
 
   // Master override for system supervisor role
   if (user.role === "supervisor") return true;
 
+  const checkCodes = Array.isArray(permissionCode) ? permissionCode : [permissionCode];
+
   // Explicit user permissions list check
-  if (user.permissions && Array.isArray(user.permissions)) {
-    return user.permissions.includes(permissionCode);
+  if (user.permissions && Array.isArray(user.permissions) && user.permissions.length > 0) {
+    return checkCodes.some((code) => user.permissions!.includes(code));
   }
 
   // System Roles Fallback mapping if permissions array is missing
@@ -28,12 +30,12 @@ export function hasPermission(permissionCode: string, targetUser?: UserPayload |
       "asset:create",
       "asset:edit",
     ];
-    return techPermissions.includes(permissionCode);
+    return checkCodes.some((code) => techPermissions.includes(code));
   }
 
   if (user.role === "requester") {
     const reqPermissions = ["work_order:read", "work_order:create"];
-    return reqPermissions.includes(permissionCode);
+    return checkCodes.some((code) => reqPermissions.includes(code));
   }
 
   // Default Deny for unknown / custom roles without explicit permissions array
