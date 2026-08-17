@@ -229,7 +229,6 @@ const AssessmentForm = () => {
       assessment_attachments: assessmentPhotos,
     };
 
-    requestStore.setAssessmentReport(request.request_id, report);
     requestStore.setStatus(request.request_id, workStatus === "waiting" ? "waiting" : "doing", "TECH001", {
       actorName: TECHNICIAN_NAME,
       note: "บันทึกผลการประเมินหน้างาน",
