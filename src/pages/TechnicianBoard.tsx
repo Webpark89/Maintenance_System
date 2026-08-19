@@ -85,6 +85,7 @@ export default function TechnicianBoard() {
   const panStartXRef = useRef(0);
   const panStartScrollLeftRef = useRef(0);
   const currentUser = getCurrentUser();
+  const isSupervisor = currentUser?.role === "supervisor" || currentUser?.role === "admin";
   const currentTech = currentUser?.emp_id || "TECH001";
   const technicianName = currentUser?.name || "ช่างซ่อมบำรุง";
   const [search, setSearch] = useState("");
@@ -198,25 +199,16 @@ export default function TechnicianBoard() {
   }, [filtered, currentTech]);
 
   const handleAccept = (id: string) => {
-    if (!isSupervisor) {
-      toast.error("ปฏิเสธการทำรายการ: ต้องให้ Supervisor เป็นผู้กดเลือกมอบหมายช่างผู้รับผิดชอบงานเท่านั้น", {
-        description: "ช่างซ่อมไม่สามารถกดรับงานเองได้ตามกฎ Standard Workflow",
-      });
-      return;
-    }
-    requestStore.setStatus(id, "assess", currentTech, {
-      actorName: technicianName,
-      note: "Supervisor มอบหมายและเริ่มประเมินงาน",
-      notifyRequester: true,
-      subStatus: SUB_STATUS_BY_STATUS.assess,
-    });
-    toast.success("มอบหมายงานสำเร็จ");
-    setTimeout(() => navigate(`/assessment/${id}`), 350);
+    const target = requests.find((r) => r.request_id === id);
+    if (!target) return;
+    requestStore.assignTechnician(id, currentTech, technicianName, true);
+    toast.success(`รับงาน ${id} เรียบร้อยแล้ว ย้ายไปยังขั้นตอนประเมินงาน`);
+    setTimeout(() => navigate(`/assessment/${id}`), 300);
   };
 
   const handleChangeStatus = async (id: string, status: Status, actionLabel: string) => {
     const reqItem = requests.find((r) => r.request_id === id);
-    if (reqItem && !canManageRequest(currentUser, reqItem)) {
+    if (reqItem && !canManageRequest(currentUser, reqItem) && !isSupervisor) {
       toast.error("ปฏิเสธการทำรายการ: ต้องให้ Supervisor กดเลือกมอบหมายช่างผู้รับผิดชอบก่อนเท่านั้น", {
         description: "ช่างซ่อมไม่สามารถเลื่อนการ์ดงานที่ยังไม่ได้มอบหมาย หรือการ์ดของช่างคนอื่นได้",
       });
@@ -224,7 +216,7 @@ export default function TechnicianBoard() {
     }
 
     try {
-      requestStore.setStatus(id, status, currentTech, {
+      requestStore.setStatus(id, status, undefined, {
         actorName: technicianName,
         subStatus: SUB_STATUS_BY_STATUS[status],
       });
@@ -333,6 +325,42 @@ export default function TechnicianBoard() {
       setDraggedId(null);
       return;
     }
+
+    // Super Manager Bypass for Admin & Supervisor:
+    // Can move any card anywhere, skip any step freely as top-level manager
+    if (isSupervisor) {
+      handleChangeStatus(draggedId, status, STATUS_LABEL[status]);
+      setDraggedId(null);
+      return;
+    }
+
+    // Role Permission Guard: complete is supervisor-only
+    if (status === "complete" && !isSupervisor) {
+      toast.error("ปฏิเสธการทำรายการ: เฉพาะ Supervisor / Admin เท่านั้นที่มีสิทธิ์ปิดงานสมบูรณ์ (Complete)");
+      setDraggedId(null);
+      return;
+    }
+
+    // Workflow State Transition Rules for Technicians
+    const currentStatus = request.status;
+
+    // Rule 1: From 'open' can only move to 'assess' (or auto-accept)
+    if (currentStatus === "open") {
+      if (status !== "assess") {
+        toast.error("ไม่สามารถข้ามขั้นตอนได้: งานเปิดใหม่ต้องผ่านขั้นตอน 'ประเมินงาน' ก่อน");
+        setDraggedId(null);
+        return;
+      }
+      // If moving open -> assess and unassigned, auto assign to current technician
+      if (!request.assigned_to) {
+        requestStore.assignTechnician(draggedId, currentTech, technicianName, true);
+        toast.success(`รับงาน ${draggedId} เรียบร้อยแล้ว ย้ายไปยังขั้นตอนประเมินงาน`);
+        setDraggedId(null);
+        return;
+      }
+    }
+
+    // Rule 2: Check RBAC ownership for other transitions
     if (!canManageRequest(currentUser, request)) {
       toast.error("ปฏิเสธการย้ายการ์ด: ต้องให้ Supervisor กดเลือกมอบหมายช่างผู้รับผิดชอบก่อนเท่านั้น", {
         description: "ช่างซ่อมไม่สามารถเลื่อนการ์ดงานที่ยังไม่ได้มอบหมาย หรือการ์ดของช่างคนอื่นได้",
@@ -340,12 +368,31 @@ export default function TechnicianBoard() {
       setDraggedId(null);
       return;
     }
+
+    // Rule 3: From 'assess' can only move to 'waiting', 'doing', or back to 'open'
+    if (currentStatus === "assess" && (status === "done" || status === "qc1" || status === "qc2" || status === "complete")) {
+      toast.error("ไม่สามารถข้ามขั้นตอนได้: งานประเมินต้องดำเนินการซ่อม ('กำลังซ่อม') ก่อนปิดงาน");
+      setDraggedId(null);
+      return;
+    }
+
+    // Rule 4: From 'waiting' can only move to 'doing' or 'assess'
+    if (currentStatus === "waiting" && (status === "done" || status === "qc1" || status === "qc2" || status === "complete")) {
+      toast.error("ไม่สามารถข้ามขั้นตอนได้: เมื่ออะไหล่พร้อมแล้วต้องเริ่มซ่อม ('กำลังซ่อม') ก่อนปิดงาน");
+      setDraggedId(null);
+      return;
+    }
+
+    // Rule 5: From 'doing' cannot skip directly to 'complete' without done / QC
+    if (currentStatus === "doing" && status === "complete") {
+      toast.error("ไม่สามารถปิดงานสมบูรณ์ได้ทันที: ต้องผ่านขั้นตอนปิดงาน (Done) และตรวจ QC ก่อน");
+      setDraggedId(null);
+      return;
+    }
+
     handleChangeStatus(draggedId, status, STATUS_LABEL[status]);
     setDraggedId(null);
   };
-
-  const userRole = (JSON.parse(sessionStorage.getItem("fixflow_user") ?? "{}") as { role?: string }).role || "technician";
-  const isSupervisor = userRole === "supervisor";
 
   const pendingApprovalsCount = useMemo(() => {
     return requests.filter((r) => r.cancellation_request?.status === "pending" || r.requisition_approval?.status === "pending").length;

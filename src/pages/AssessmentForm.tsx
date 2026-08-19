@@ -163,6 +163,7 @@ const AssessmentForm = () => {
   const [assessmentPhotos, setAssessmentPhotos] = useState<RequestAttachment[]>([]);
   const [isStockOpen, setIsStockOpen] = useState(false);
   const [isDualSigOpen, setIsDualSigOpen] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
   const timeline = useMemo(
     () => [...request.status_timeline].sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()),
@@ -190,8 +191,6 @@ const AssessmentForm = () => {
   const removeAssessmentPhoto = (attachmentId: string) =>
     setAssessmentPhotos((prev) => prev.filter((item) => item.attachment_id !== attachmentId));
 
-
-
   const applyStatusAction = (nextStatus: Status, actionLabel: string) => {
     requestStore.setStatus(request.request_id, nextStatus, "TECH001", {
       actorName: TECHNICIAN_NAME,
@@ -210,10 +209,31 @@ const AssessmentForm = () => {
       toast.error("งานนี้เสร็จสิ้นสมบูรณ์แล้ว ไม่สามารถแก้ไขข้อมูลย้อนหลังได้");
       return;
     }
+
+    const newErrors: Record<string, string> = {};
+
+    if (!visitDate) {
+      newErrors.visitDate = "กรุณาระบุวันที่เข้าประเมินหน้างาน";
+    }
+    if (!repairStartDate) {
+      newErrors.repairStartDate = "กรุณาระบุวันที่เริ่มต้นซ่อม";
+    }
+    if (!repairEndDate) {
+      newErrors.repairEndDate = "กรุณาระบุวันที่สิ้นสุดซ่อม";
+    } else if (repairStartDate && repairEndDate < repairStartDate) {
+      newErrors.repairEndDate = "วันที่สิ้นสุดต้องไม่น้อยกว่าวันที่เริ่มต้น";
+    }
     if (!resultText.trim()) {
-      toast.error("กรุณากรอกผลการประเมินหน้างาน");
+      newErrors.resultText = "กรุณากรอกผลการประเมินหน้างาน (จำเป็น)";
+    }
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
+      toast.error("กรุณากรอกข้อมูลที่จำเป็นให้ครบถ้วน (ตรวจสอบช่องกรอบสีแดง)");
       return;
     }
+
+    setErrors({});
 
     const report: AssessmentReport = {
       visit_date: visitDate,
@@ -229,16 +249,15 @@ const AssessmentForm = () => {
       assessment_attachments: assessmentPhotos,
     };
 
-    requestStore.setStatus(request.request_id, workStatus === "waiting" ? "waiting" : "doing", "TECH001", {
-      actorName: TECHNICIAN_NAME,
-      note: "บันทึกผลการประเมินหน้างาน",
-      notifyRequester: true,
-    });
-    requestStore.update(request.request_id, {
-      assessment_report: report,
-    });
-    toast.success("บันทึกข้อมูลการประเมินเรียบร้อย");
-    setTimeout(() => navigate("/board"), 600);
+    const targetStatus: Status = workStatus === "waiting" ? "waiting" : "doing";
+    requestStore.saveAssessmentReport(
+      request.request_id,
+      report,
+      targetStatus,
+      currentUser?.name || TECHNICIAN_NAME,
+    );
+    toast.success(`บันทึกผลการประเมินเรียบร้อย — ปรับสถานะงานเป็น: ${STATUS_LABEL[targetStatus]}`);
+    setTimeout(() => navigate("/board"), 400);
   };
 
   if (!request) {
@@ -268,7 +287,7 @@ const AssessmentForm = () => {
           <span className="px-2 py-0.5 rounded bg-slate-800 border border-slate-700 text-emerald-400 text-[10px]">Read Only</span>
         </div>
       )}
-      <div className="grid lg:grid-cols-[380px_1fr] gap-6 pb-24">
+      <div className="grid lg:grid-cols-[380px_1fr] gap-6 pb-6 items-start">
 
         <aside className="lg:sticky lg:top-24 lg:self-start space-y-4">
           <Card className="p-5 bg-gradient-card shadow-card space-y-4">
@@ -372,7 +391,7 @@ const AssessmentForm = () => {
           </Card>
         </aside>
 
-        <section className="space-y-4">
+        <section>
           <div className="lg:hidden">
             <Accordion type="multiple" defaultValue={["visit", "assess", "parts", "status", "timeline"]} className="space-y-3">
               <SectionAccordion value="visit" icon={<Calendar className="h-4 w-4" />} title="วันเข้าประเมิน / ระดับความสำคัญ">
@@ -383,6 +402,8 @@ const AssessmentForm = () => {
                   accessDateSource={details?.reported_date_from_qr}
                   priorityLevel={priorityLevel}
                   setPriorityLevel={setPriorityLevel}
+                  errors={errors}
+                  setErrors={setErrors}
                 />
               </SectionAccordion>
               <SectionAccordion value="assess" icon={<ClipboardCheck className="h-4 w-4" />} title="ผลการประเมินหน้างาน">
@@ -401,6 +422,8 @@ const AssessmentForm = () => {
                   setResultText={setResultText}
                   temporaryMeasure={temporaryMeasure}
                   setTemporaryMeasure={setTemporaryMeasure}
+                  errors={errors}
+                  setErrors={setErrors}
                 />
               </SectionAccordion>
               <SectionAccordion value="parts" icon={<Package className="h-4 w-4" />} title="เบิกอะไหล่ & คลังสินค้า">
@@ -441,6 +464,8 @@ const AssessmentForm = () => {
                 accessDateSource={details?.reported_date_from_qr}
                 priorityLevel={priorityLevel}
                 setPriorityLevel={setPriorityLevel}
+                errors={errors}
+                setErrors={setErrors}
               />
             </SectionCard>
             <SectionCard icon={<ClipboardCheck className="h-5 w-5" />} title="ผลการประเมินหน้างาน">
@@ -459,6 +484,8 @@ const AssessmentForm = () => {
                 setResultText={setResultText}
                 temporaryMeasure={temporaryMeasure}
                 setTemporaryMeasure={setTemporaryMeasure}
+                errors={errors}
+                setErrors={setErrors}
               />
             </SectionCard>
             <SectionCard icon={<Package className="h-5 w-5" />} title="เบิกอะไหล่ & คลังสินค้า (Stock Requisition)">
@@ -491,31 +518,35 @@ const AssessmentForm = () => {
         </section>
       </div>
 
-      <div className="fixed bottom-0 inset-x-0 bg-card/95 backdrop-blur border-t border-border shadow-elevated z-30">
-        <div className="container py-3 flex flex-wrap items-center gap-3">
-          <div className="flex-1 hidden sm:block text-sm text-muted-foreground">
+      {/* Sticky Bottom Action Bar — Scoped inside main content pane (never overlaps sidebar or Logout) */}
+      <div className="sticky bottom-0 -mx-4 sm:-mx-6 -mb-4 sm:-mb-6 mt-8 bg-card/95 backdrop-blur-md border-t border-border shadow-elevated z-20">
+        <div className="px-4 sm:px-6 py-3 flex items-center justify-between gap-3 w-full">
+          <div className="hidden sm:block text-sm text-muted-foreground truncate">
             บันทึกพร้อมสถานะงาน <strong className="text-foreground">{STATUS_LABEL[status]}</strong>
           </div>
-          <Button variant="outline" className="hidden md:inline-flex" onClick={() => applyStatusAction("assess", "ประเมินงาน") }>
-            ประเมินงาน
-          </Button>
-          <Button variant="outline" className="hidden md:inline-flex" onClick={() => applyStatusAction("waiting", "รออะไหล่")}>
-            รออะไหล่
-          </Button>
-          <Button
-            variant={isSupervisor ? "industrial" : "outline"}
-            className="hidden md:inline-flex gap-1"
-            onClick={() => setIsDualSigOpen(true)}
-            title={isSupervisor ? "อนุมัติปิดงาน (สำหรับ Supervisor)" : "ดูการอนุมัติปิดงาน (เฉพาะ Supervisor อนุมัติได้)"}
-          >
-            {isSupervisor ? "อนุมัติปิดงาน (Sign 2 คน)" : "ดูการอนุมัติ 2 คน"}
-          </Button>
-          <Button variant="outline" onClick={() => navigate("/board")} className="flex-1 sm:flex-initial">
-            ยกเลิก
-          </Button>
-          <Button variant="industrial" size="lg" onClick={handleSave} className="flex-1 sm:flex-initial">
-            <Save className="h-4 w-4 mr-1" /> บันทึกผลประเมิน
-          </Button>
+          <div className="flex items-center gap-2 sm:gap-2.5 ml-auto shrink-0">
+            <Button variant="outline" size="sm" className="hidden md:inline-flex text-xs h-9" onClick={() => applyStatusAction("assess", "ประเมินงาน") }>
+              ประเมินงาน
+            </Button>
+            <Button variant="outline" size="sm" className="hidden md:inline-flex text-xs h-9" onClick={() => applyStatusAction("waiting", "รออะไหล่")}>
+              รออะไหล่
+            </Button>
+            <Button
+              variant={isSupervisor ? "industrial" : "outline"}
+              size="sm"
+              className="hidden md:inline-flex gap-1 text-xs h-9"
+              onClick={() => setIsDualSigOpen(true)}
+              title={isSupervisor ? "อนุมัติปิดงาน (สำหรับ Supervisor)" : "ดูการอนุมัติปิดงาน (เฉพาะ Supervisor อนุมัติได้)"}
+            >
+              {isSupervisor ? "อนุมัติปิดงาน (Sign 2 คน)" : "ดูการอนุมัติ 2 คน"}
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => navigate("/board")} className="text-xs h-9 px-4">
+              ยกเลิก
+            </Button>
+            <Button variant="industrial" size="sm" onClick={handleSave} className="text-xs font-semibold h-9 px-5 shadow-sm">
+              <Save className="h-4 w-4 mr-1.5" /> บันทึกผลประเมิน
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -617,6 +648,8 @@ function AssessmentVisitFields({
   accessDateSource,
   priorityLevel,
   setPriorityLevel,
+  errors,
+  setErrors,
 }: {
   visitDate: string;
   setVisitDate: (v: string) => void;
@@ -624,18 +657,29 @@ function AssessmentVisitFields({
   accessDateSource?: string;
   priorityLevel: PriorityLevel;
   setPriorityLevel: (v: PriorityLevel) => void;
+  errors?: Record<string, string>;
+  setErrors?: React.Dispatch<React.SetStateAction<Record<string, string>>>;
 }) {
   return (
     <div className="space-y-4">
       <div className="grid sm:grid-cols-2 gap-3">
         <div className="space-y-1.5">
-          <Label className="flex items-center gap-1 text-xs"><Calendar className="h-3 w-3" /> วันที่เข้าประเมินหน้างาน</Label>
+          <Label className="flex items-center gap-1 text-xs">
+            <Calendar className="h-3 w-3" /> วันที่เข้าประเมินหน้างาน <span className="text-rose-500 font-bold">*</span>
+          </Label>
           <Input
             type="date"
             value={visitDate}
-            onChange={(e) => setVisitDate(e.target.value)}
+            onChange={(e) => {
+              setVisitDate(e.target.value);
+              if (errors?.visitDate && setErrors) {
+                setErrors((prev) => ({ ...prev, visitDate: "" }));
+              }
+            }}
             disabled={locked}
+            className={errors?.visitDate ? "border-rose-500 ring-1 ring-rose-500 focus-visible:ring-rose-500 bg-rose-50/10" : ""}
           />
+          {errors?.visitDate && <p className="text-[11px] text-rose-500 font-medium">{errors.visitDate}</p>}
           {locked && <p className="text-[11px] text-muted-foreground">ล็อกวันที่จากคำขอเดิม: {accessDateSource || visitDate}</p>}
         </div>
         <div className="space-y-1.5">
@@ -678,6 +722,8 @@ function OnSiteAssessmentFields({
   setResultText,
   temporaryMeasure,
   setTemporaryMeasure,
+  errors,
+  setErrors,
 }: {
   workStatus: WorkStatus;
   setWorkStatus: (v: WorkStatus) => void;
@@ -693,6 +739,8 @@ function OnSiteAssessmentFields({
   setResultText: (v: string) => void;
   temporaryMeasure: string;
   setTemporaryMeasure: (v: string) => void;
+  errors?: Record<string, string>;
+  setErrors?: React.Dispatch<React.SetStateAction<Record<string, string>>>;
 }) {
   return (
     <div className="space-y-4">
@@ -731,12 +779,38 @@ function OnSiteAssessmentFields({
           <Label className="text-xs font-semibold">จำนวนวันซ่อม (คำนวณวันทำงานจริงหักวันหยุด)</Label>
           <div className="grid grid-cols-2 gap-2">
             <div>
-              <Label className="text-[11px] text-muted-foreground">เริ่มต้น</Label>
-              <Input type="date" value={repairStartDate} onChange={(e) => setRepairStartDate(e.target.value)} />
+              <Label className="text-[11px] text-muted-foreground">
+                เริ่มต้น <span className="text-rose-500 font-bold">*</span>
+              </Label>
+              <Input
+                type="date"
+                value={repairStartDate}
+                onChange={(e) => {
+                  setRepairStartDate(e.target.value);
+                  if (errors?.repairStartDate && setErrors) {
+                    setErrors((prev) => ({ ...prev, repairStartDate: "" }));
+                  }
+                }}
+                className={errors?.repairStartDate ? "border-rose-500 ring-1 ring-rose-500 focus-visible:ring-rose-500 bg-rose-50/10" : ""}
+              />
+              {errors?.repairStartDate && <p className="text-[10px] text-rose-500 font-medium mt-0.5">{errors.repairStartDate}</p>}
             </div>
             <div>
-              <Label className="text-[11px] text-muted-foreground">สิ้นสุด</Label>
-              <Input type="date" value={repairEndDate} onChange={(e) => setRepairEndDate(e.target.value)} />
+              <Label className="text-[11px] text-muted-foreground">
+                สิ้นสุด <span className="text-rose-500 font-bold">*</span>
+              </Label>
+              <Input
+                type="date"
+                value={repairEndDate}
+                onChange={(e) => {
+                  setRepairEndDate(e.target.value);
+                  if (errors?.repairEndDate && setErrors) {
+                    setErrors((prev) => ({ ...prev, repairEndDate: "" }));
+                  }
+                }}
+                className={errors?.repairEndDate ? "border-rose-500 ring-1 ring-rose-500 focus-visible:ring-rose-500 bg-rose-50/10" : ""}
+              />
+              {errors?.repairEndDate && <p className="text-[10px] text-rose-500 font-medium mt-0.5">{errors.repairEndDate}</p>}
             </div>
           </div>
 
@@ -770,8 +844,29 @@ function OnSiteAssessmentFields({
       </div>
 
       <div className="space-y-1.5">
-        <Label className="text-xs">ผลการประเมินหน้างาน</Label>
-        <Textarea rows={4} value={resultText} onChange={(e) => setResultText(e.target.value)} placeholder="สรุปผลการตรวจสอบ สาเหตุหลัก และข้อเสนอแนะ" />
+        <div className="flex items-center justify-between">
+          <Label className="text-xs font-semibold flex items-center gap-1">
+            ผลการประเมินหน้างาน <span className="text-rose-500 font-bold">*</span>
+          </Label>
+          {errors?.resultText && (
+            <span className="text-[11px] text-rose-500 font-medium animate-pulse">{errors.resultText}</span>
+          )}
+        </div>
+        <Textarea
+          rows={4}
+          value={resultText}
+          onChange={(e) => {
+            setResultText(e.target.value);
+            if (errors?.resultText && setErrors) {
+              setErrors((prev) => ({ ...prev, resultText: "" }));
+            }
+          }}
+          placeholder="สรุปผลการตรวจสอบ สาเหตุหลัก และข้อเสนอแนะ (จำเป็นต้องกรอกก่อนบันทึก)"
+          className={errors?.resultText ? "border-rose-500 ring-1 ring-rose-500 focus-visible:ring-rose-500 bg-rose-50/10" : ""}
+        />
+        {errors?.resultText && (
+          <p className="text-[11px] text-rose-500 font-medium">กรุณาระบุรายละเอียดผลการประเมินหน้างานก่อนกดบันทึก</p>
+        )}
       </div>
 
       <div className="space-y-1.5">

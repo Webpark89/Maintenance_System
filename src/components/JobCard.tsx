@@ -60,7 +60,7 @@ export function JobCard({
 }: Props) {
   const user = getCurrentUser();
   const techniciansList = useTechnicians();
-  const isSupervisor = user?.role === "supervisor";
+  const isSupervisor = user?.role === "supervisor" || user?.role === "admin";
   const isCompleted = request.status === "complete";
 
   const Icon = CATEGORY_ICON[request.category] || CircleHelp;
@@ -148,9 +148,9 @@ export function JobCard({
   };
 
   const handleAssignTechnician = (techId: string) => {
-    requestStore.assignTechnician(request.request_id, techId, user?.name || "Supervisor");
+    requestStore.assignTechnician(request.request_id, techId, user?.name || "Supervisor", true);
     const techName = techniciansList.find((t) => t.emp_id === techId)?.name || techId;
-    toast.success(`มอบหมายงาน ${request.request_id} ให้แก่ ${techName}`);
+    toast.success(`มอบหมายงาน ${request.request_id} ให้แก่ ${techName} และย้ายไปยังขั้นตอนประเมินงานเรียบร้อย`);
   };
 
   const handleApproveHighCostRequisition = () => {
@@ -379,15 +379,17 @@ export function JobCard({
             <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">
               {CATEGORY_LABEL[request.category]}
             </span>
-            {showAccept && isSupervisor && request.status === "open" && !isCompleted ? (
+            {showAccept && request.status === "open" && !request.assigned_to && !isCompleted ? (
               <Button
                 size="sm"
                 variant="industrial"
+                className="h-7 text-xs font-semibold px-2.5 shadow-2xs gap-1"
                 onClick={(e) => {
                   e.stopPropagation();
                   onAccept?.(request.request_id);
                 }}
               >
+                <Wrench className="h-3.5 w-3.5" />
                 รับงานนี้
               </Button>
             ) : (

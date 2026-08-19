@@ -2,6 +2,7 @@ import { Response } from 'express';
 import { prisma } from '../config/db.js';
 import { AuthenticatedRequest } from '../middlewares/authMiddleware.js';
 import { sendNotification } from '../services/socketService.js';
+import { logAudit } from '../utils/auditLogger.js';
 
 // Status transition rule constraint map
 const VALID_TRANSITIONS: Record<string, string[]> = {
@@ -297,36 +298,46 @@ export async function assignTechnician(req: AuthenticatedRequest, res: Response)
       return res.status(404).json({ success: false, message: 'ไม่พบใบแจ้งซ่อมนี้ในระบบ' });
     }
 
-    let techUserId: number | null = null;
-    const rawNum = Number(technician_id);
-    if (!isNaN(rawNum) && rawNum > 0) {
-      const foundById = await prisma.users.findUnique({ where: { id: rawNum } });
-      if (foundById) techUserId = foundById.id;
-    }
+    let techUser = await prisma.users.findFirst({
+      where: {
+        OR: [
+          { emp_id: String(technician_id).trim().toUpperCase() },
+          { emp_id: String(technician_id).trim() },
+          { name: String(technician_id).trim() }
+        ]
+      },
+      include: { roles: true }
+    });
 
-    if (!techUserId) {
-      const techUser = await prisma.users.findFirst({
-        where: {
-          OR: [
-            { emp_id: String(technician_id).trim().toUpperCase() },
-            { emp_id: String(technician_id).trim() },
-            { name: String(technician_id).trim() }
-          ]
-        }
+    if (!techUser && !isNaN(Number(technician_id)) && Number(technician_id) > 0) {
+      techUser = await prisma.users.findUnique({
+        where: { id: Number(technician_id) },
+        include: { roles: true }
       });
-      if (techUser) techUserId = techUser.id;
     }
 
-    if (!techUserId) {
+    if (!techUser) {
       return res.status(404).json({
         success: false,
         message: `ไม่พบข้อมูลช่างซ่อมที่ระบุในระบบ (technician: ${technician_id})`,
       });
     }
 
+    if (techUser.roles?.name === 'requester' || techUser.role === 'requester' || techUser.emp_id === 'REQ042') {
+      return res.status(400).json({
+        success: false,
+        message: `ไม่สามารถมอบหมายงานให้ผู้แจ้งซ่อม (${techUser.name}) ได้`,
+      });
+    }
+
+    const nextStatus = targetRequest.status === 'open' ? 'in_progress' : targetRequest.status;
+
     const updated = await prisma.maintenance_requests.update({
       where: { id: targetRequest.id },
-      data: { assigned_technician_id: techUserId },
+      data: {
+        assigned_technician_id: techUser.id,
+        status: nextStatus,
+      },
     });
 
     // Notify assigned technician
@@ -348,4 +359,229 @@ export async function assignTechnician(req: AuthenticatedRequest, res: Response)
     return res.status(500).json({ success: false, message: error?.message || 'เกิดข้อผิดพลาดในการมอบหมายช่างซ่อม' });
   }
 }
+
+// 5. POST /api/v1/requests/:id/requisitions - Add requisition with stock deduction
+export async function addRequisitionItem(req: AuthenticatedRequest, res: Response) {
+  try {
+    const { id } = req.params;
+    const { part_id, part_name, quantity, unit_price } = req.body || {};
+
+    const requestIdStr = Array.isArray(id) ? String(id[0]) : String(id);
+    const targetRequest = await findRequestByAnyId(requestIdStr);
+    if (!targetRequest) {
+      return res.status(404).json({ success: false, message: 'ไม่พบใบแจ้งซ่อมนี้ในระบบ' });
+    }
+
+    const qty = Number(quantity);
+    if (isNaN(qty) || qty <= 0) {
+      return res.status(400).json({ success: false, message: 'จำนวนอะไหล่ต้องมากกว่า 0' });
+    }
+
+    const price = Number(unit_price) || 0;
+    const totalPrice = qty * price;
+    const cleanPartName = String(part_name || '').trim();
+
+    if (!cleanPartName) {
+      return res.status(400).json({ success: false, message: 'กรุณาระบุชื่ออะไหล่' });
+    }
+
+    let parsedPartId: number | null = null;
+    if (part_id && !String(part_id).startsWith('PART-') && !String(part_id).startsWith('custom')) {
+      const numPart = Number(part_id);
+      if (!isNaN(numPart) && numPart > 0) {
+        parsedPartId = numPart;
+      }
+    }
+
+    // Execute in transaction to safely deduct stock if linked to spare_parts
+    const result = await prisma.$transaction(async (tx) => {
+      let sparePartRecord: any = null;
+
+      if (parsedPartId) {
+        sparePartRecord = await tx.spare_parts.findUnique({ where: { id: parsedPartId } });
+        if (sparePartRecord) {
+          if (sparePartRecord.stock_qty < qty) {
+            throw new Error(`สต็อกไม่เพียงพอ: ${sparePartRecord.name} คงเหลือเพียง ${sparePartRecord.stock_qty} ${sparePartRecord.unit || 'ชิ้น'}`);
+          }
+
+          // Deduct stock
+          await tx.spare_parts.update({
+            where: { id: parsedPartId },
+            data: { stock_qty: { decrement: qty } },
+          });
+        }
+      }
+
+      // Create requisition entry
+      const created = await tx.work_order_requisitions.create({
+        data: {
+          request_id: targetRequest.id,
+          part_id: parsedPartId,
+          quantity: qty,
+          unit_price: price,
+          total_price: totalPrice,
+          is_approved: totalPrice < 10000,
+          approved_by_id: totalPrice < 10000 ? req.user?.userId : null,
+        },
+        include: {
+          spare_parts: true,
+        },
+      });
+
+      return { created, sparePartRecord };
+    });
+
+    await logAudit({
+      req,
+      action: 'ADD_REQUISITION',
+      module: 'REQUISITION',
+      targetId: result.created.id,
+      details: {
+        work_order_no: targetRequest.work_order_no,
+        part_name: cleanPartName,
+        quantity: qty,
+        total_price: totalPrice,
+      },
+    });
+
+    return res.status(201).json({
+      success: true,
+      message: `เบิกอะไหล่ ${cleanPartName} จำนวน ${qty} รายการสำเร็จ`,
+      data: result.created,
+    });
+  } catch (error: any) {
+    console.error('addRequisitionItem error:', error);
+    return res.status(400).json({ success: false, message: error?.message || 'เกิดข้อผิดพลาดในการเบิกอะไหล่' });
+  }
+}
+
+// 6. POST /api/v1/requests/:id/requisitions/approve - Supervisor approves requisition
+export async function approveRequisition(req: AuthenticatedRequest, res: Response) {
+  try {
+    const { id } = req.params;
+    const requestIdStr = Array.isArray(id) ? String(id[0]) : String(id);
+    const targetRequest = await findRequestByAnyId(requestIdStr);
+
+    if (!targetRequest) {
+      return res.status(404).json({ success: false, message: 'ไม่พบใบแจ้งซ่อมนี้ในระบบ' });
+    }
+
+    await prisma.work_order_requisitions.updateMany({
+      where: { request_id: targetRequest.id },
+      data: {
+        is_approved: true,
+        approved_by_id: req.user?.userId,
+      },
+    });
+
+    await logAudit({
+      req,
+      action: 'APPROVE_REQUISITIONS',
+      module: 'REQUISITION',
+      targetId: targetRequest.id,
+      details: { work_order_no: targetRequest.work_order_no },
+    });
+
+    return res.json({
+      success: true,
+      message: `อนุมัติการเบิกอะไหล่สำหรับใบแจ้งซ่อม ${targetRequest.work_order_no} เรียบร้อยแล้ว`,
+    });
+  } catch (error: any) {
+    console.error('approveRequisition error:', error);
+    return res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการอนุมัติการเบิกอะไหล่' });
+  }
+}
+
+// 7. PATCH /api/v1/requests/:id/parts-ready - Update parts ready status
+export async function togglePartsReady(req: AuthenticatedRequest, res: Response) {
+  try {
+    const { id } = req.params;
+    const { parts_ready } = req.body || {};
+    const requestIdStr = Array.isArray(id) ? String(id[0]) : String(id);
+    const targetRequest = await findRequestByAnyId(requestIdStr);
+
+    if (!targetRequest) {
+      return res.status(404).json({ success: false, message: 'ไม่พบใบแจ้งซ่อมนี้ในระบบ' });
+    }
+
+    if (parts_ready) {
+      // Send notification to technicians and supervisor
+      await sendNotification({
+        userId: targetRequest.assigned_technician_id || null,
+        requestId: targetRequest.id,
+        title: `📦 อะไหล่พร้อมใช้งานแล้ว (${targetRequest.work_order_no})`,
+        message: `อะไหล่สำหรับงานซ่อม ${targetRequest.problem_title} พร้อมเบิกไปใช้งานแล้ว`,
+        eventType: 'parts_ready',
+        payloadData: { request_id: targetRequest.id, parts_ready: true },
+      });
+    }
+
+    return res.json({
+      success: true,
+      message: `อัปเดตสถานะอะไหล่เรียบร้อยแล้ว`,
+      data: { parts_ready: !!parts_ready },
+    });
+  } catch (error: any) {
+    console.error('togglePartsReady error:', error);
+    return res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการอัปเดตสถานะอะไหล่' });
+  }
+}
+
+// 8. DELETE /api/v1/requests/:id/requisitions/:reqId - Remove requisition & refund stock
+export async function removeRequisitionItem(req: AuthenticatedRequest, res: Response) {
+  try {
+    const { id, reqId } = req.params;
+    const numReqId = Number(reqId);
+
+    const requisition = await prisma.work_order_requisitions.findFirst({
+      where: {
+        ...(isNaN(numReqId) ? {} : { id: numReqId }),
+      },
+      include: {
+        spare_parts: true,
+      },
+    });
+
+    if (!requisition) {
+      return res.status(404).json({ success: false, message: 'ไม่พบรายการเบิกอะไหล่นี้' });
+    }
+
+    await prisma.$transaction(async (tx) => {
+      // Refund stock if linked to spare_parts
+      if (requisition.part_id) {
+        await tx.spare_parts.update({
+          where: { id: requisition.part_id },
+          data: { stock_qty: { increment: requisition.quantity } },
+        });
+      }
+
+      // Delete the requisition
+      await tx.work_order_requisitions.delete({
+        where: { id: requisition.id },
+      });
+    });
+
+    await logAudit({
+      req,
+      action: 'REMOVE_REQUISITION',
+      module: 'REQUISITION',
+      targetId: requisition.id,
+      details: {
+        part_name: requisition.spare_parts?.name || 'อะไหล่',
+        quantity: requisition.quantity,
+        refunded: true,
+      },
+    });
+
+    return res.json({
+      success: true,
+      message: `ยกเลิกรายการเบิกและคืนสต็อกสำเร็จ`,
+    });
+  } catch (error: any) {
+    console.error('removeRequisitionItem error:', error);
+    return res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการยกเลิกรายการเบิก' });
+  }
+}
+
+
 

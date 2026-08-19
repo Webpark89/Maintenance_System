@@ -54,8 +54,8 @@ export function hasPermission(permissionCode: string | string[], targetUser?: Us
 export function canManageRequest(user: UserPayload | null, request: WorkRequest): boolean {
   if (!user) return false;
 
-  // 1. Supervisor role has full management & assignment permissions
-  if (user.role === "supervisor" || hasPermission("work_order:assign", user)) {
+  // 1. Supervisor & Admin roles have full management & assignment permissions over all work requests
+  if (user.role === "supervisor" || user.role === "admin" || hasPermission("work_order:assign", user)) {
     return true;
   }
 
