@@ -352,8 +352,9 @@ export default function AssetManagement() {
         toast.success("ลงทะเบียนเครื่องจักรใหม่ลงฐานข้อมูลเรียบร้อย");
       }
       handleBackToList();
-    } catch (err: any) {
-      toast.error(err.message || "เกิดข้อผิดพลาดในการลงทะเบียนเครื่องจักร");
+    } catch (err: unknown) {
+      const errorMsg = err instanceof Error ? err.message : "เกิดข้อผิดพลาดในการลงทะเบียนเครื่องจักร";
+      toast.error(errorMsg);
     } finally {
       setSubmitting(false);
     }
@@ -931,7 +932,7 @@ export default function AssetManagement() {
                     <Label className="text-xs font-semibold">ประเภทงานซ่อมที่แนะนำ</Label>
                     <Select
                       value={formData.suggested_job_type}
-                      onValueChange={(val: any) => setFormData({ ...formData, suggested_job_type: val })}
+                      onValueChange={(val: AssetMachine["suggested_job_type"]) => setFormData({ ...formData, suggested_job_type: val })}
                     >
                       <SelectTrigger className="h-9 text-xs">
                         <SelectValue placeholder="เลือกประเภทงานซ่อม" />

@@ -104,11 +104,22 @@ export const FALLBACK_ASSET_MACHINES: AssetMachine[] = [
   },
 ];
 
+interface ApiAssetItem {
+  asset_code: string;
+  name: string;
+  category?: string;
+  model?: string;
+  serial_number?: string;
+  location?: string;
+  status?: string;
+  created_at?: string;
+}
+
 export async function fetchAssetsFromApi(): Promise<AssetMachine[]> {
   try {
     const res = await api.get("/assets");
     if (res.data?.data && Array.isArray(res.data.data) && res.data.data.length > 0) {
-      return res.data.data.map((item: any) => ({
+      return (res.data.data as ApiAssetItem[]).map((item) => ({
         asset_id: item.asset_code,
         asset_name: item.name,
         asset_type: item.category || "เครื่องกล",
@@ -119,7 +130,7 @@ export async function fetchAssetsFromApi(): Promise<AssetMachine[]> {
         location_line: "Line 1",
         access_required: false,
         access_time_window: "08:00-17:00",
-        suggested_job_type: (item.category as any) || "mechanical",
+        suggested_job_type: (item.category as AssetMachine["suggested_job_type"]) || "mechanical",
         status: item.status === "operational" ? "active" : "maintenance",
         created_at: item.created_at,
       }));
@@ -144,31 +155,94 @@ export async function createAssetApi(data: {
   return res.data;
 }
 
+const STORAGE_KEY = "maintenance_assets_v1";
+
+function loadSavedAssets(): AssetMachine[] {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    }
+  } catch (e) {
+    console.warn("Failed to load assets from localStorage:", e);
+  }
+  return FALLBACK_ASSET_MACHINES;
+}
+
+function saveAssetsToStorage(assets: AssetMachine[]): void {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(assets));
+  } catch (e) {
+    console.warn("Failed to save assets to localStorage:", e);
+  }
+}
+
+let globalAssets: AssetMachine[] = loadSavedAssets();
+const listeners = new Set<() => void>();
+
+function notifyListeners(): void {
+  listeners.forEach((fn) => fn());
+}
+
 export const assetStore = {
-  add: (data: any) => {
-    createAssetApi({
-      asset_code: data.asset_id,
-      name: data.asset_name,
-      location: `${data.location_building} ${data.location_floor}`,
-      category: data.suggested_job_type || 'mechanical',
-    });
+  getAll: (): AssetMachine[] => globalAssets,
+  getById: (id: string): AssetMachine | undefined => globalAssets.find((a) => a.asset_id === id),
+  addAsset: (data: AssetMachine): void => {
+    const exists = globalAssets.some((a) => a.asset_id === data.asset_id);
+    if (exists) {
+      globalAssets = globalAssets.map((a) => (a.asset_id === data.asset_id ? { ...a, ...data } : a));
+    } else {
+      globalAssets = [data, ...globalAssets];
+    }
+    saveAssetsToStorage(globalAssets);
+    notifyListeners();
   },
-  update: () => {},
-  delete: () => {},
+  add: (data: AssetMachine): void => {
+    assetStore.addAsset(data);
+  },
+  updateAsset: (assetId: string, updates: Partial<AssetMachine>): void => {
+    globalAssets = globalAssets.map((a) => (a.asset_id === assetId ? { ...a, ...updates } : a));
+    saveAssetsToStorage(globalAssets);
+    notifyListeners();
+  },
+  update: (assetId: string, updates: Partial<AssetMachine>): void => {
+    assetStore.updateAsset(assetId, updates);
+  },
+  deleteAsset: (assetId: string): void => {
+    globalAssets = globalAssets.filter((a) => a.asset_id !== assetId);
+    saveAssetsToStorage(globalAssets);
+    notifyListeners();
+  },
+  delete: (assetId: string): void => {
+    assetStore.deleteAsset(assetId);
+  },
 };
 
-export function useAssets() {
-  const [assets, setAssets] = useState<AssetMachine[]>(FALLBACK_ASSET_MACHINES);
+export function useAssets(): AssetMachine[] {
+  const [assets, setAssets] = useState<AssetMachine[]>(globalAssets);
 
   useEffect(() => {
     let isMounted = true;
+    const handleChange = () => {
+      if (isMounted) setAssets([...globalAssets]);
+    };
+    listeners.add(handleChange);
+
     fetchAssetsFromApi().then((data) => {
       if (isMounted && data.length > 0) {
-        setAssets(data);
+        // Merge API data with local overrides
+        const localMap = new Map(globalAssets.map((a) => [a.asset_id, a]));
+        const merged = data.map((item) => localMap.get(item.asset_id) || item);
+        globalAssets = merged;
+        saveAssetsToStorage(globalAssets);
+        setAssets([...globalAssets]);
       }
     });
+
     return () => {
       isMounted = false;
+      listeners.delete(handleChange);
     };
   }, []);
 
