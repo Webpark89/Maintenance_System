@@ -656,7 +656,7 @@ export default function AssetManagement() {
                             </TableCell>
                             <TableCell className="text-xs">
                               <div className="space-y-0.5">
-                                <span className="font-mono font-bold text-foreground block flex items-center gap-1">
+                                <span className="font-mono font-bold text-foreground flex items-center gap-1">
                                   <Clock className="w-3 h-3 text-amber-500" /> {asset.access_time_window}
                                 </span>
                                 {asset.access_required && (

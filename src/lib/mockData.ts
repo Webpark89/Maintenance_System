@@ -153,6 +153,9 @@ export interface SparePart {
   stock: number;
   unit: string;
   unit_price?: number;
+  category?: string;
+  location?: string;
+  min_stock?: number;
 }
 
 export interface CancellationRequest {
