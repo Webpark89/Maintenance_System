@@ -1,5 +1,5 @@
 import { io, Socket } from 'socket.io-client';
-import { toast } from 'sonner';
+import { toast } from '@/components/ui/sonner';
 
 const getSocketUrl = () => {
   if (import.meta.env.VITE_SOCKET_URL) {

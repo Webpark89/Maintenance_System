@@ -4,6 +4,7 @@ import {
   createRequest,
   updateRequestStatus,
   assignTechnician,
+  deleteRequest,
   addRequisitionItem,
   approveRequisition,
   togglePartsReady,
@@ -17,6 +18,7 @@ router.use(authenticate);
 
 router.get('/', requirePermission('work_order:read'), getAllRequests);
 router.post('/', requirePermission('work_order:create'), createRequest);
+router.delete('/:id', requirePermission(['work_order:assign', 'work_order:assess']), deleteRequest);
 router.patch('/:id/status', requirePermission(['work_order:assess', 'work_order:assign']), updateRequestStatus);
 router.patch('/:id/assign', requirePermission('work_order:assign'), assignTechnician);
 

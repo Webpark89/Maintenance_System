@@ -3,7 +3,7 @@ import { prisma } from '../config/db.js';
 
 export async function getKPIMetrics(req: Request, res: Response) {
   try {
-    const totalRequests = await prisma.maintenance_requests.count();
+    const totalRequests = await prisma.maintenance_requests.count({ where: { status: { not: 'cancelled' } } });
     const openRequests = await prisma.maintenance_requests.count({ where: { status: 'open' } });
     const inProgressRequests = await prisma.maintenance_requests.count({ where: { status: { in: ['assess', 'waiting', 'doing'] } } });
     const completedRequests = await prisma.maintenance_requests.count({ where: { status: 'complete' } });

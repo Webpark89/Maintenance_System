@@ -156,7 +156,9 @@ export async function fetchRequestsFromApi(): Promise<WorkRequest[]> {
   try {
     const res = await api.get('/requests');
     if (res.data?.data && Array.isArray(res.data.data) && res.data.data.length > 0) {
-      return res.data.data.map(mapApiToWorkRequest);
+      return res.data.data
+        .filter((item: any) => item.status !== 'cancelled')
+        .map(mapApiToWorkRequest);
     }
     return MOCK_REQUESTS_WITH_TIMELINE;
   } catch (error) {
@@ -282,8 +284,8 @@ export const requestStore = {
       reported_by_id: data.reported_by_id || 'REQ042',
       reported_by_department: data.reported_by_department || 'ฝ่ายผลิต',
       category: data.category || 'mechanical',
-      assigned_to: null,
-      assigned_technician_name: null,
+      assigned_to: data.assigned_to || null,
+      assigned_technician_name: data.assigned_technician_name || null,
       attachments: data.attachments || (data.image_url ? [{
         attachment_id: `att-${Date.now()}`,
         name: 'รูปถ่ายอาการชำรุด',
@@ -336,6 +338,9 @@ export const requestStore = {
     }).catch(() => {});
 
     return newRequest;
+  },
+  addRequest: (data: any): WorkRequest => {
+    return requestStore.add(data);
   },
   setStatus: (id: string, status: Status, techId?: string, opts?: any) => {
     const subStatus = opts?.subStatus || SUB_STATUS_BY_STATUS[status] || "reported";
@@ -412,15 +417,19 @@ export const requestStore = {
   },
   approveCancellation: (id: string, approvedBy?: string, approved?: boolean, rejectReason?: string) => {
     if (approved) {
-      globalRequests = globalRequests.filter((r) => r.request_id !== id);
+      globalRequests = globalRequests.filter((r) => r.request_id !== id && String(r.request_id) !== String(id));
+      api.delete(`/requests/${id}`).catch(() => {
+        updateRequestStatusApi(id, 'cancelled' as WorkOrderStatus).catch(() => {});
+      });
     }
     notifyListeners();
-    updateRequestStatusApi(id, 'cancelled' as WorkOrderStatus).catch(() => {});
   },
   deleteRequestBySupervisor: (id: string) => {
-    globalRequests = globalRequests.filter((r) => r.request_id !== id);
+    globalRequests = globalRequests.filter((r) => r.request_id !== id && String(r.request_id) !== String(id));
     notifyListeners();
-    updateRequestStatusApi(id, 'cancelled' as WorkOrderStatus).catch(() => {});
+    api.delete(`/requests/${id}`).catch(() => {
+      updateRequestStatusApi(id, 'cancelled' as WorkOrderStatus).catch(() => {});
+    });
   },
   assignTechnician: (id: string, techId: string, assignedBy?: string, autoMoveToAssess: boolean = true) => {
     const allTechs = getAllTechniciansList();

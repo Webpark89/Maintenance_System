@@ -31,13 +31,14 @@ export async function getAllRequests(req: AuthenticatedRequest, res: Response) {
   try {
     const userRole = req.user?.role;
     const userId = req.user?.userId;
+    const includeCancelled = req.query.include_cancelled === 'true';
 
-    let whereClause = {};
+    let whereClause: any = includeCancelled ? {} : { status: { not: 'cancelled' } };
 
     // Data Scope Control:
     // Requester: เห็นเฉพาะงานซ่อมของตนเอง
     if (userRole === 'requester') {
-      whereClause = { reported_by_id: userId };
+      whereClause.reported_by_id = userId;
     }
 
     const requests = await prisma.maintenance_requests.findMany({
@@ -330,7 +331,7 @@ export async function assignTechnician(req: AuthenticatedRequest, res: Response)
       });
     }
 
-    const nextStatus = targetRequest.status === 'open' ? 'in_progress' : targetRequest.status;
+    const nextStatus = targetRequest.status === 'open' ? 'assess' : targetRequest.status;
 
     const updated = await prisma.maintenance_requests.update({
       where: { id: targetRequest.id },
@@ -342,7 +343,7 @@ export async function assignTechnician(req: AuthenticatedRequest, res: Response)
 
     // Notify assigned technician
     await sendNotification({
-      userId: techUserId,
+      userId: techUser.id,
       requestId: updated.id,
       title: `🛠️ คุณได้รับมอบหมายงานซ่อมใหม่ (${updated.work_order_no})`,
       message: `งานซ่อม: ${updated.problem_title}`,
@@ -580,6 +581,42 @@ export async function removeRequisitionItem(req: AuthenticatedRequest, res: Resp
   } catch (error: any) {
     console.error('removeRequisitionItem error:', error);
     return res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการยกเลิกรายการเบิก' });
+  }
+}
+
+// 8. DELETE /api/v1/requests/:id - Delete / Cancel work order
+export async function deleteRequest(req: AuthenticatedRequest, res: Response) {
+  try {
+    const { id } = req.params;
+    const requestIdStr = Array.isArray(id) ? String(id[0]) : String(id);
+    const targetRequest = await findRequestByAnyId(requestIdStr);
+
+    if (!targetRequest) {
+      return res.status(404).json({ success: false, message: 'ไม่พบใบแจ้งซ่อมที่ต้องการลบ' });
+    }
+
+    if (req.user?.role !== 'supervisor') {
+      return res.status(403).json({ success: false, message: 'เฉพาะหัวหน้างาน (Supervisor) เท่านั้นที่มีสิทธิ์ลบใบแจ้งซ่อม' });
+    }
+
+    // Mark as cancelled
+    const updated = await prisma.maintenance_requests.update({
+      where: { id: targetRequest.id },
+      data: { status: 'cancelled' },
+    });
+
+    await logAudit({
+      req,
+      action: 'DELETE_REQUEST',
+      module: 'WORK_ORDER',
+      targetId: targetRequest.id,
+      details: { work_order_no: targetRequest.work_order_no, problem_title: targetRequest.problem_title },
+    });
+
+    return res.json({ success: true, message: `ลบใบแจ้งซ่อม ${targetRequest.work_order_no} สำเร็จ`, data: updated });
+  } catch (error: any) {
+    console.error('deleteRequest error:', error);
+    return res.status(500).json({ success: false, message: error?.message || 'เกิดข้อผิดพลาดในการลบใบแจ้งซ่อม' });
   }
 }
 

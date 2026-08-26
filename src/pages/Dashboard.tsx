@@ -97,15 +97,20 @@ export default function Dashboard() {
   const [isPrintDialogOpen, setIsPrintDialogOpen] = useState(false);
   const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
 
+  // Filter out any cancelled work orders from all Dashboard calculations
+  const activeRequests = useMemo(() => {
+    return requests.filter((r) => (r.status as string) !== "cancelled");
+  }, [requests]);
+
   // Compute Dashboard Statistics & KPIs
   const stats = useMemo(() => {
-    const total = requests.length;
-    const completed = requests.filter((r) => r.status === "complete").length;
-    const active = requests.filter((r) => ["open", "assess", "doing", "waiting"].includes(r.status)).length;
-    const critical = requests.filter((r) => r.priority === "critical" && r.status !== "complete").length;
+    const total = activeRequests.length;
+    const completed = activeRequests.filter((r) => r.status === "complete").length;
+    const active = activeRequests.filter((r) => ["open", "assess", "doing", "waiting"].includes(r.status)).length;
+    const critical = activeRequests.filter((r) => r.priority === "critical" && r.status !== "complete").length;
 
     // Calculate Total Parts Cost
-    const totalCost = requests.reduce((sum, r) => sum + (r.stock_requisition?.total_price || 0), 0);
+    const totalCost = activeRequests.reduce((sum, r) => sum + (r.stock_requisition?.total_price || 0), 0);
 
     // Completion Rate
     const completionRate = total > 0 ? Math.round((completed / total) * 100) : 0;
@@ -114,11 +119,11 @@ export default function Dashboard() {
     const mttrAvgHours = 3.5;
 
     // Total Estimated Downtime Hours
-    const totalDowntimeHours = requests.length * 4.2;
+    const totalDowntimeHours = activeRequests.length * 4.2;
 
     // 1. Category Breakdown Data
     const categoryCounts: Record<string, number> = {};
-    requests.forEach((r) => {
+    activeRequests.forEach((r) => {
       const label = CATEGORY_LABEL[r.category] || r.category;
       categoryCounts[label] = (categoryCounts[label] || 0) + 1;
     });
@@ -126,7 +131,7 @@ export default function Dashboard() {
 
     // 2. Status Breakdown Data
     const statusCounts: Record<string, number> = {};
-    requests.forEach((r) => {
+    activeRequests.forEach((r) => {
       const label = STATUS_LABEL[r.status] || r.status;
       statusCounts[label] = (statusCounts[label] || 0) + 1;
     });
@@ -134,7 +139,7 @@ export default function Dashboard() {
 
     // 3. Top Breakdown Assets
     const assetCounts: Record<string, number> = {};
-    requests.forEach((r) => {
+    activeRequests.forEach((r) => {
       assetCounts[r.asset_name] = (assetCounts[r.asset_name] || 0) + 1;
     });
     const topAssets = Object.entries(assetCounts)
@@ -144,7 +149,7 @@ export default function Dashboard() {
 
     // 4. Priority Breakdown
     const priorityCounts: Record<string, number> = {};
-    requests.forEach((r) => {
+    activeRequests.forEach((r) => {
       const label = PRIORITY_LABEL[r.priority] || r.priority;
       priorityCounts[label] = (priorityCounts[label] || 0) + 1;
     });
